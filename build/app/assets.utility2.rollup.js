@@ -607,10 +607,23 @@ local.templateApidocMd = '\
                 packageJson: JSON.parse(readExample('package.json'))
             });
             Object.keys(options.packageJson).forEach(function (key) {
-                if (key[0] === '_') {
+                tmp = options.packageJson[key];
+                // strip email from npmdoc documentation
+                // https://github.com/npmdoc/node-npmdoc-hpp/issues/1
+                if (tmp) {
+                    delete tmp.email;
+                    if (Array.isArray(tmp)) {
+                        tmp.forEach(function (element) {
+                            if (element) {
+                                delete element.email;
+                            }
+                        });
+                    }
+                }
+                if (key === 'readme' || key[0] === '_') {
                     delete options.packageJson[key];
-                } else if (typeof options.packageJson[key] === 'string') {
-                    options.env['npm_package_' + key] = options.packageJson[key];
+                } else if (typeof tmp === 'string') {
+                    options.env['npm_package_' + key] = tmp;
                 }
             });
             if (options.modeRenderFast) {
@@ -643,13 +656,31 @@ local.templateApidocMd = '\
             ).map(readExample));
             // init moduleMain
             try {
+                console.error('apidocCreate - requiring ' + options.dir + ' ...');
                 moduleMain = {};
-                moduleMain = options.moduleDict[options.env.npm_package_name] =
-                    options.moduleDict[options.env.npm_package_name] ||
+                moduleMain = options.moduleDict[options.env.npm_package_name] ||
                     require(options.dir);
-            } catch (ignore) {
+                console.error('apidocCreate - ... required ' + options.dir);
+            } catch (errorCaught) {
+                console.error(errorCaught);
             }
-            options.moduleDict[options.env.npm_package_name] = moduleMain;
+            tmp = {};
+            // handle case where module is a function
+            if (typeof moduleMain === 'function') {
+                (function () {
+                    var toString;
+                    toString = moduleMain.toString();
+                    tmp = function () {
+                        return;
+                    };
+                    tmp.toString = function () {
+                        return toString;
+                    };
+                }());
+            }
+            // normalize moduleMain
+            moduleMain = options.moduleDict[options.env.npm_package_name] =
+                local.objectSetDefault(tmp, moduleMain);
             // init circularList - builtin
             Object.keys(process.binding('natives')).forEach(function (key) {
                 if (!(/\/|_linklist|sys/).test(key)) {
@@ -739,9 +770,6 @@ local.templateApidocMd = '\
             });
             options.exampleList = options.exampleList.slice(0, 20);
             local.apidocModuleDictAdd(options, options.moduleExtraDict);
-            // normalize moduleMain
-            moduleMain = options.moduleDict[options.env.npm_package_name] =
-                local.objectSetDefault({}, moduleMain);
             Object.keys(options.moduleDict).forEach(function (key) {
                 if (key.indexOf(options.env.npm_package_name + '.') !== 0) {
                     return;
@@ -1099,7 +1127,7 @@ local.templateApidocMd = '\
          * this function will if error exists, then print error.stack to stderr
          */
             if (error && !local.global.__coverage__) {
-                console.error(error.stack);
+                console.error(error);
             }
         };
 
@@ -1485,44 +1513,80 @@ local.templateApidocMd = '\
             this.isDirty = null;
             this.idIndexList = [{ name: '_id', dict: {} }];
             this.onSaveList = [];
-            this.ttl = 0;
-            this.ttlLast = 0;
+            this.sizeLimit = options.sizeLimit || 0;
         };
 
         local._DbTable.prototype._cleanup = function () {
         /*
          * this function will cleanup soft-deleted records from the dbTable
          */
-            var dbRow, ii, list, ttl;
-            ttl = Date.now();
-            if (!(this.isDirty ||
-                  // cleanup ttl every minute
-                  (this.ttl && this.ttlLast + this.ttl < ttl))) {
+            var dbRow, ii, list;
+            if (!this.isDirty && this.dbRowList.length <= this.sizeLimit) {
                 return;
             }
             this.isDirty = null;
-            this.ttlLast = ttl;
             // cleanup dbRowList
             list = this.dbRowList;
             this.dbRowList = [];
             // optimization - for-loop
             for (ii = 0; ii < list.length; ii += 1) {
                 dbRow = list[ii];
-                // cleanup ttl
-                if (this.ttl && dbRow.$meta.ttl < ttl) {
-                    this._crudRemoveOneById(dbRow);
                 // cleanup isRemoved
-                } else if (!dbRow.$meta.isRemoved) {
+                if (!dbRow.$meta.isRemoved) {
                     this.dbRowList.push(dbRow);
                 }
             }
+            if (this.sizeLimit && this.dbRowList.length >= 1.5 * this.sizeLimit) {
+                this.dbRowList = this._crudGetManyByQuery(
+                    {},
+                    this.sortDefault,
+                    0,
+                    this.sizeLimit
+                );
+            }
         };
 
-        local._DbTable.prototype._crudGetManyByQuery = function (query) {
+        local._DbTable.prototype._crudGetManyByQuery = function (query, sort, skip, limit) {
         /*
-         * this function will get the dbRow's in the dbTable with the given query
+         * this function will get the dbRow's in the dbTable,
+         * with the given query, sort, skip, and limit
          */
-            return local.dbRowListGetManyByQuery(this.dbRowList, local.normalizeDict(query));
+            var ii, result;
+            result = this.dbRowList;
+            // get by query
+            if (result.length && query && Object.keys(query).length) {
+                result = local.dbRowListGetManyByQuery(this.dbRowList, query);
+            }
+            // sort
+            local.normalizeList(sort).forEach(function (element) {
+                // bug-workaround - v8 does not have stable-sort
+                // optimization - for-loop
+                for (ii = 0; ii < result.length; ii += 1) {
+                    result[ii].$meta.ii = ii;
+                }
+                if (element.isDescending) {
+                    result.sort(function (aa, bb) {
+                        return -local.sortCompare(
+                            local.dbRowGetItem(aa, element.fieldName),
+                            local.dbRowGetItem(bb, element.fieldName),
+                            aa.$meta.ii,
+                            bb.$meta.ii
+                        );
+                    });
+                } else {
+                    result.sort(function (aa, bb) {
+                        return local.sortCompare(
+                            local.dbRowGetItem(aa, element.fieldName),
+                            local.dbRowGetItem(bb, element.fieldName),
+                            aa.$meta.ii,
+                            bb.$meta.ii
+                        );
+                    });
+                }
+            });
+            // skip and limit
+            result = result.slice(skip || 0, (skip || 0) + (limit || Infinity));
+            return result;
         };
 
         local._DbTable.prototype._crudGetOneById = function (idDict) {
@@ -1614,7 +1678,7 @@ local.templateApidocMd = '\
             // remove existing dbRow
             existing = this._crudRemoveOneById(dbRow) || dbRow;
             // init meta
-            dbRow.$meta = { isRemoved: null, ttl: this.ttl + Date.now() };
+            dbRow.$meta = { isRemoved: null };
             this.idIndexList.forEach(function (idIndex) {
                 // auto-set id
                 id = local.dbRowSetId(existing, idIndex);
@@ -1697,36 +1761,15 @@ local.templateApidocMd = '\
         /*
          * this function will get the dbRow's in the dbTable with the given options.query
          */
-            var result;
             this._cleanup();
             options = local.normalizeDict(options);
-            // get dbRow's with the given options.query
-            result = this._crudGetManyByQuery(options.query);
-            // sort dbRow's with the given options.sort
-            local.normalizeList(options.sort || this.sortDefault).forEach(function (element) {
-                if (element.isDescending) {
-                    result.sort(function (aa, bb) {
-                        return -local.sortCompare(
-                            local.dbRowGetItem(aa, element.fieldName),
-                            local.dbRowGetItem(bb, element.fieldName)
-                        );
-                    });
-                } else {
-                    result.sort(function (aa, bb) {
-                        return local.sortCompare(
-                            local.dbRowGetItem(aa, element.fieldName),
-                            local.dbRowGetItem(bb, element.fieldName)
-                        );
-                    });
-                }
-            });
-            // skip and limit dbRow's with the given options.skip and options.limit
-            result = result.slice(
-                options.skip || 0,
-                (options.skip || 0) + (options.limit || Infinity)
-            );
             return local.setTimeoutOnError(onError, null, local.dbRowProject(
-                result,
+                this._crudGetManyByQuery(
+                    options.query,
+                    options.sort || this.sortDefault,
+                    options.skip,
+                    options.limit
+                ),
                 options.fieldList
             ));
         };
@@ -1902,13 +1945,13 @@ local.templateApidocMd = '\
             this._cleanup();
             self = this;
             result = '';
-            result += self.name + ' ttlSet ' + self.ttl + '\n';
             self.idIndexList.forEach(function (idIndex) {
                 result += self.name + ' idIndexCreate ' + JSON.stringify({
                     isInteger: idIndex.isInteger,
                     name: idIndex.name
                 }) + '\n';
             });
+            result += self.name + ' sizeLimit ' + self.sizeLimit + '\n';
             result += self.name + ' sortDefault ' + JSON.stringify(self.sortDefault) + '\n';
             self.crudGetManyByQuery({}).forEach(function (dbRow) {
                 result += self.name + ' dbRowSet ' + JSON.stringify(dbRow) + '\n';
@@ -1988,23 +2031,6 @@ local.templateApidocMd = '\
             }, 1000);
         };
 
-        local._DbTable.prototype.ttlSet = function (ttl, onError) {
-        /*
-         * this function will set the ttl in milliseconds
-         */
-            var ii;
-            // set ttl in milliseconds
-            this.ttl = ttl;
-            // update dbRowList
-            ttl += Date.now();
-            // optimization - for-loop
-            for (ii = 0; ii < this.dbRowList.length; ii += 1) {
-                this.dbRowList[ii].$meta.ttl = ttl;
-            }
-            this.save();
-            return local.setTimeoutOnError(onError);
-        };
-
         local.dbCrudRemoveAll = function (onError) {
         /*
          * this function will remove all dbRow's from the db
@@ -2061,7 +2087,7 @@ local.templateApidocMd = '\
             setTimeout(function () {
                 local.modeImport = null;
             });
-            text.replace((/^(\w\S*?) (\S+?) (\S.+?)$/gm), function (
+            text.replace((/^(\w\S*?) (\S+?) (\S.*?)$/gm), function (
                 match0,
                 match1,
                 match2,
@@ -2078,12 +2104,12 @@ local.templateApidocMd = '\
                     dbTable = local.dbTableCreateOne({ isLoaded: true, name: match1 });
                     dbTable.idIndexCreate(JSON.parse(match3));
                     break;
+                case 'sizeLimit':
+                    dbTable = local.dbTableCreateOne({ isLoaded: true, name: match1 });
+                    dbTable.sizeLimit = JSON.parse(match3);
+                    break;
                 case 'sortDefault':
                     dbTable = local.dbTableCreateOne({ isLoaded: true, name: match1 });
-                    break;
-                case 'ttlSet':
-                    dbTable = local.dbTableCreateOne({ isLoaded: true, name: match1 });
-                    dbTable.ttlSet(JSON.parse(match3));
                     break;
                 default:
                     local.onErrorDefault(new Error('dbImport - invalid operation - ' + match0));
@@ -2259,9 +2285,6 @@ local.templateApidocMd = '\
          */
             var bb, dbRowDict, result;
             result = dbRowList;
-            if (!result.length) {
-                return result;
-            }
             if (!(query && typeof query === 'object')) {
                 result = local.dbRowListGetManyByOperator(result, fieldName, '$eq', query);
                 return result;
@@ -2411,7 +2434,7 @@ local.templateApidocMd = '\
 
         local.dbTableDict = {};
 
-        local.sortCompare = function (aa, bb) {
+        local.sortCompare = function (aa, bb, ii, jj) {
         /*
          * this function will compare aa vs bb and return:
          * -1 if aa < bb
@@ -2422,7 +2445,9 @@ local.templateApidocMd = '\
          */
             var typeof1, typeof2;
             if (aa === bb) {
-                return 0;
+                return ii < jj
+                    ? -1
+                    : 1;
             }
             if (aa === null) {
                 return -1;
@@ -2944,7 +2969,7 @@ local.templateApidocMd = '\
                     return match0;
                 });
             if (options.url.indexOf('https://api.github.com/repos/') !== 0) {
-                options.onError2(new Error('invalid url ' + options.url));
+                onError(new Error('invalid url ' + options.url));
                 return;
             }
             if (options.method !== 'GET') {
@@ -9739,7 +9764,7 @@ instruction\n\
                     /*jslint evil: true*/\n\
                     eval(document.querySelector(\'#inputTextareaEval1\').value);\n\
                 } catch (errorCaught) {\n\
-                    console.error(errorCaught.stack);\n\
+                    console.error(errorCaught);\n\
                 }\n\
             }\n\
         };\n\
@@ -9921,109 +9946,6 @@ local.assetsDict['/assets.lib.template.js'] = '\
 
 
 
-local.assetsDict['/assets.readmeCustomOrgNpmdocHeader.template.md'] = '\
-# api documentation for \
-{{#if env.npm_package_homepage}} \
-[{{env.npm_package_name}} (v{{env.npm_package_version}})]({{env.npm_package_homepage}}) \
-{{#unless env.npm_package_homepage}} \
-{{env.npm_package_name}} (v{{env.npm_package_version}}) \
-{{/if env.npm_package_homepage}} \
-[![npm package](https://img.shields.io/npm/v/npmdoc-{{env.npm_package_name}}.svg?style=flat-square)](https://www.npmjs.org/package/npmdoc-{{env.npm_package_name}}) \
-[![travis-ci.org build-status](https://api.travis-ci.org/npmdoc/node-npmdoc-{{env.npm_package_name}}.svg)](https://travis-ci.org/npmdoc/node-npmdoc-{{env.npm_package_name}}) \
-\n\
-#### {{env.npm_package_description}} \
-\n\
-\n\
-[![NPM](https://nodei.co/npm/{{env.npm_package_name}}.png?downloads=true)](https://www.npmjs.com/package/{{env.npm_package_name}}) \
-\n\
-\n\
-[![apidoc](https://npmdoc.github.io/node-npmdoc-{{env.npm_package_name}}/build/screenCapture.buildApidoc.browser.%252Fhome%252Ftravis%252Fbuild%252Fnpmdoc%252Fnode-npmdoc-{{env.npm_package_name}}%252Ftmp%252Fbuild%252Fapidoc.html.png)](https://npmdoc.github.io/node-npmdoc-{{env.npm_package_name}}/build/apidoc.html) \
-\n\
-\n\
-![npmPackageListing](https://npmdoc.github.io/node-npmdoc-{{env.npm_package_name}}/build/screenCapture.npmPackageListing.svg) \
-\n\
-\n\
-![npmPackageDependencyTree](https://npmdoc.github.io/node-npmdoc-{{env.npm_package_name}}/build/screenCapture.npmPackageDependencyTree.svg) \
-\n\
-\n\
-\n\
-\n\
-# package.json \
-\n\
-\n\
-```json \
-\n\
-\n\
-{{packageJson jsonStringify4 markdownCodeSafe}} \
-\n\
-``` \
-\n\
-';
-
-
-
-local.assetsDict['/assets.readmeCustomOrgNpmtest.template.md'] = '\
-# test coverage for \
-{{#if env.npm_package_homepage}} \
-[{{env.npm_package_name}} (v{{env.npm_package_version}})]({{env.npm_package_homepage}}) \
-{{#unless env.npm_package_homepage}} \
-{{env.npm_package_name}} (v{{env.npm_package_version}}) \
-{{/if env.npm_package_homepage}} \
-[![npm package](https://img.shields.io/npm/v/npmtest-{{env.npm_package_name}}.svg?style=flat-square)](https://www.npmjs.org/package/npmtest-{{env.npm_package_name}}) \
-[![travis-ci.org build-status](https://api.travis-ci.org/npmtest/node-npmtest-{{env.npm_package_name}}.svg)](https://travis-ci.org/npmtest/node-npmtest-{{env.npm_package_name}}) \
-\n\
-#### {{env.npm_package_description}} \
-\n\
-\n\
-[![NPM](https://nodei.co/npm/{{env.npm_package_name}}.png?downloads=true)](https://www.npmjs.com/package/{{env.npm_package_name}}) \
-\n\
-\n\
-| git-branch : | [alpha](https://github.com/npmtest/node-npmtest-{{env.npm_package_name}}/tree/alpha)|\n\
-|--:|:--| \
-\n\
-| coverage : | [![istanbul-coverage](https://npmtest.github.io/node-npmtest-{{env.npm_package_name}}/build/coverage.badge.svg)](https://npmtest.github.io/node-npmtest-{{env.npm_package_name}}/build/coverage.html/index.html)| \
-\n\
-| test-report : | [![test-report](https://npmtest.github.io/node-npmtest-{{env.npm_package_name}}/build/test-report.badge.svg)](https://npmtest.github.io/node-npmtest-{{env.npm_package_name}}/build/test-report.html)| \
-\n\
-| build-artifacts : | [![build-artifacts](https://npmtest.github.io/node-npmtest-{{env.npm_package_name}}/glyphicons_144_folder_open.png)](https://github.com/npmtest/node-npmtest-{{env.npm_package_name}}/tree/gh-pages/build)| \
-\n\
-\n\
-[![istanbul-coverage](https://npmtest.github.io/node-npmtest-{{env.npm_package_name}}/build/screenCapture.buildCustomOrg.browser.coverage.html.png)](https://npmtest.github.io/node-npmtest-{{env.npm_package_name}}/build/coverage.html/index.html) \
-\n\
-\n\
-[![test-report](https://npmtest.github.io/node-npmtest-{{env.npm_package_name}}/build/screenCapture.buildCustomOrg.browser.%252Fhome%252Ftravis%252Fbuild%252Fnpmtest%252Fnode-npmtest-{{env.npm_package_name}}%252Ftmp%252Fbuild%252Ftest-report.html.png)](https://npmtest.github.io/node-npmtest-{{env.npm_package_name}}/build/test-report.html) \
-\n\
-\n\
-[![apidoc](https://npmdoc.github.io/node-npmdoc-{{env.npm_package_name}}/build/screenCapture.buildApidoc.browser.%252Fhome%252Ftravis%252Fbuild%252Fnpmdoc%252Fnode-npmdoc-{{env.npm_package_name}}%252Ftmp%252Fbuild%252Fapidoc.html.png)](https://npmdoc.github.io/node-npmdoc-{{env.npm_package_name}}/build/apidoc.html) \
-\n\
-\n\
-![npmPackageListing](https://npmtest.github.io/node-npmtest-{{env.npm_package_name}}/build/screenCapture.npmPackageListing.svg) \
-\n\
-\n\
-![npmPackageDependencyTree](https://npmtest.github.io/node-npmtest-{{env.npm_package_name}}/build/screenCapture.npmPackageDependencyTree.svg) \
-\n\
-\n\
-\n\
-\n\
-# package.json \
-\n\
-\n\
-```json \
-\n\
-\n\
-{{packageJson jsonStringify4 markdownCodeSafe}} \
-\n\
-``` \
-\n\
-\n\
-\n\
-\n\
-# misc\n\
-- this document was created with [utility2](https://github.com/kaizhu256/node-utility2)\n\
-';
-
-
-
 local.assetsDict['/assets.readme.template.md'] = '\
 # jslint-lite\n\
 the greatest app in the world!\n\
@@ -10054,7 +9976,7 @@ the greatest app in the world!\n\
 #### apidoc\n\
 - [https://kaizhu256.github.io/node-jslint-lite/build..beta..travis-ci.org/apidoc.html](https://kaizhu256.github.io/node-jslint-lite/build..beta..travis-ci.org/apidoc.html)\n\
 \n\
-[![apidoc](https://kaizhu256.github.io/node-jslint-lite/build/screenCapture.buildApidoc.browser.%252Fhome%252Ftravis%252Fbuild%252Fkaizhu256%252Fnode-jslint-lite%252Ftmp%252Fbuild%252Fapidoc.html.png)](https://kaizhu256.github.io/node-jslint-lite/build..beta..travis-ci.org/apidoc.html)\n\
+[![apidoc](https://kaizhu256.github.io/node-jslint-lite/build/screenCapture.buildCi.browser.apidoc.html.png)](https://kaizhu256.github.io/node-jslint-lite/build..beta..travis-ci.org/apidoc.html)\n\
 \n\
 #### todo\n\
 - none\n\
@@ -10184,6 +10106,109 @@ shBuildCi\n\
 
 
 
+local.assetsDict['/assets.readmeCustomOrg.npmdoc.template.md'] = '\
+# api documentation for \
+{{#if env.npm_package_homepage}} \
+[{{env.npm_package_name}} (v{{env.npm_package_version}})]({{env.npm_package_homepage}}) \
+{{#unless env.npm_package_homepage}} \
+{{env.npm_package_name}} (v{{env.npm_package_version}}) \
+{{/if env.npm_package_homepage}} \
+[![npm package](https://img.shields.io/npm/v/npmdoc-{{env.npm_package_name}}.svg?style=flat-square)](https://www.npmjs.org/package/npmdoc-{{env.npm_package_name}}) \
+[![travis-ci.org build-status](https://api.travis-ci.org/npmdoc/node-npmdoc-{{env.npm_package_name}}.svg)](https://travis-ci.org/npmdoc/node-npmdoc-{{env.npm_package_name}}) \
+\n\
+#### {{env.npm_package_description}} \
+\n\
+\n\
+[![NPM](https://nodei.co/npm/{{env.npm_package_name}}.png?downloads=true&downloadRank=true&stars=true)](https://www.npmjs.com/package/{{env.npm_package_name}}) \
+\n\
+\n\
+[![apidoc](https://npmdoc.github.io/node-npmdoc-{{env.npm_package_name}}/build/screenCapture.buildCi.browser.apidoc.html.png)](https://npmdoc.github.io/node-npmdoc-{{env.npm_package_name}}/build/apidoc.html) \
+\n\
+\n\
+![npmPackageListing](https://npmdoc.github.io/node-npmdoc-{{env.npm_package_name}}/build/screenCapture.npmPackageListing.svg) \
+\n\
+\n\
+![npmPackageDependencyTree](https://npmdoc.github.io/node-npmdoc-{{env.npm_package_name}}/build/screenCapture.npmPackageDependencyTree.svg) \
+\n\
+\n\
+\n\
+\n\
+# package.json \
+\n\
+\n\
+```json \
+\n\
+\n\
+{{packageJson jsonStringify4 markdownCodeSafe}} \
+\n\
+``` \
+\n\
+';
+
+
+
+local.assetsDict['/assets.readmeCustomOrg.npmtest.template.md'] = '\
+# test coverage for \
+{{#if env.npm_package_homepage}} \
+[{{env.npm_package_name}} (v{{env.npm_package_version}})]({{env.npm_package_homepage}}) \
+{{#unless env.npm_package_homepage}} \
+{{env.npm_package_name}} (v{{env.npm_package_version}}) \
+{{/if env.npm_package_homepage}} \
+[![npm package](https://img.shields.io/npm/v/npmtest-{{env.npm_package_name}}.svg?style=flat-square)](https://www.npmjs.org/package/npmtest-{{env.npm_package_name}}) \
+[![travis-ci.org build-status](https://api.travis-ci.org/npmtest/node-npmtest-{{env.npm_package_name}}.svg)](https://travis-ci.org/npmtest/node-npmtest-{{env.npm_package_name}}) \
+\n\
+#### {{env.npm_package_description}} \
+\n\
+\n\
+[![NPM](https://nodei.co/npm/{{env.npm_package_name}}.png?downloads=true&downloadRank=true&stars=true)](https://www.npmjs.com/package/{{env.npm_package_name}}) \
+\n\
+\n\
+| git-branch : | [alpha](https://github.com/npmtest/node-npmtest-{{env.npm_package_name}}/tree/alpha)|\n\
+|--:|:--| \
+\n\
+| coverage : | [![istanbul-coverage](https://npmtest.github.io/node-npmtest-{{env.npm_package_name}}/build/coverage.badge.svg)](https://npmtest.github.io/node-npmtest-{{env.npm_package_name}}/build/coverage.html/index.html)| \
+\n\
+| test-report : | [![test-report](https://npmtest.github.io/node-npmtest-{{env.npm_package_name}}/build/test-report.badge.svg)](https://npmtest.github.io/node-npmtest-{{env.npm_package_name}}/build/test-report.html)| \
+\n\
+| build-artifacts : | [![build-artifacts](https://npmtest.github.io/node-npmtest-{{env.npm_package_name}}/glyphicons_144_folder_open.png)](https://github.com/npmtest/node-npmtest-{{env.npm_package_name}}/tree/gh-pages/build)| \
+\n\
+\n\
+[![istanbul-coverage](https://npmtest.github.io/node-npmtest-{{env.npm_package_name}}/build/screenCapture.buildCi.browser.coverage.example.html.png)](https://npmtest.github.io/node-npmtest-{{env.npm_package_name}}/build/coverage.html/index.html) \
+\n\
+\n\
+[![test-report](https://npmtest.github.io/node-npmtest-{{env.npm_package_name}}/build/screenCapture.buildCi.browser.test-report.html.png)](https://npmtest.github.io/node-npmtest-{{env.npm_package_name}}/build/test-report.html) \
+\n\
+\n\
+[![apidoc](https://npmdoc.github.io/node-npmdoc-{{env.npm_package_name}}/build/screenCapture.buildCi.browser.apidoc.html.png)](https://npmdoc.github.io/node-npmdoc-{{env.npm_package_name}}/build/apidoc.html) \
+\n\
+\n\
+![npmPackageListing](https://npmtest.github.io/node-npmtest-{{env.npm_package_name}}/build/screenCapture.npmPackageListing.svg) \
+\n\
+\n\
+![npmPackageDependencyTree](https://npmtest.github.io/node-npmtest-{{env.npm_package_name}}/build/screenCapture.npmPackageDependencyTree.svg) \
+\n\
+\n\
+\n\
+\n\
+# package.json \
+\n\
+\n\
+```json \
+\n\
+\n\
+{{packageJson jsonStringify4 markdownCodeSafe}} \
+\n\
+``` \
+\n\
+\n\
+\n\
+\n\
+# misc\n\
+- this document was created with [utility2](https://github.com/kaizhu256/node-utility2)\n\
+';
+
+
+
 local.assetsDict['/assets.test.template.js'] = '\
 /* istanbul instrument in package jslint */\n\
 /*jslint\n\
@@ -10307,9 +10332,19 @@ local.assetsDict['/assets.test.template.js'] = '\
             local.testCase_buildReadme_default(options, local.onErrorThrow);\n\
             local.testCase_buildLib_default(options, local.onErrorThrow);\n\
             local.testCase_buildTest_default(options, local.onErrorThrow);\n\
+            local.testCase_buildCustomOrg_default(options, local.onErrorThrow);\n\
             options = [];\n\
             local.buildApp(options, onError);\n\
         };\n\
+\n\
+        local.testCase_buildCustomOrg_default = local.testCase_buildCustomOrg_default ||\n\
+            function (options, onError) {\n\
+            /*\n\
+             * this function will test buildCustomOrg\'s default handling-behavior\n\
+             */\n\
+                options = {};\n\
+                local.buildCustomOrg(options, onError);\n\
+            };\n\
 \n\
         local.testCase_buildLib_default = local.testCase_buildLib_default || function (\n\
             options,\n\
@@ -11586,7 +11621,7 @@ local.assetsDict['/favicon.ico'] = '';
                             '/test-report.' + options.testName + '.json',
                         modeBrowserTest: 'test',
                         timeExit: Date.now() + options.timeoutDefault,
-                        timeoutScreenCapture: Number(options.timeoutScreenCapture || 15000)
+                        timeoutScreenCapture: Number(options.timeoutScreenCapture || 10000)
                     }, 1);
                     // init timerTimeout
                     timerTimeout = local.onTimeout(
@@ -11644,6 +11679,12 @@ local.assetsDict['/favicon.ico'] = '';
                     }).once('exit', onNext);
                     break;
                 case 2:
+                    // cleanup fileElectronHtml
+                    try {
+                        local.fs.unlinkSync(options.fileElectronHtml);
+                        local.fs.unlinkSync(options.fileElectronHtml + '.preload.js');
+                    } catch (ignore) {
+                    }
                     console.error('\nbrowserTest - exit-code ' + error + ' - ' + options.url +
                         '\n');
                     // merge browser coverage
@@ -11746,7 +11787,7 @@ local.assetsDict['/favicon.ico'] = '';
                         try {
                             onNext(null, event);
                         } catch (errorCaught) {
-                            console.error(errorCaught.stack);
+                            console.error(errorCaught);
                         }
                     });
                     break;
@@ -11962,7 +12003,7 @@ return Utf8ArrayToStr(bff);
          * this function will build the apidoc
          */
             if (local.env.npm_package_buildCustomOrg && !options.modeForce) {
-                local.buildApidocCustomOrg(local.objectSetDefault({}, options), onError);
+                onError();
                 return;
             }
             // optimization - do not run if $npm_config_mode_coverage = all
@@ -11978,91 +12019,8 @@ return Utf8ArrayToStr(bff);
             );
             console.error('created apidoc file://' + local.env.npm_config_dir_build +
                 '/apidoc.html\n');
-            local.browserTest({
-                modeBrowserTest: 'screenCapture',
-                url: local.env.npm_config_dir_build + '/apidoc.html'
-            }, onError);
+            onError();
         };
-
-        local.buildApidocCustomOrg = function (options, onError) {
-        /*
-         * this function will build the customOrg
-         */
-            var done, onError2, onParallel;
-            // ensure exit after 5 minutes
-            setTimeout(process.exit, 5 * 60 * 1000);
-            onError2 = function (error) {
-                local.onErrorDefault(error);
-                if (done) {
-                    return;
-                }
-                done = true;
-                // try to recover from error
-                setTimeout(onError, error && local.timeoutDefault);
-            };
-            // try to salvage uncaughtException
-            process.on('uncaughtException', onError2);
-            onParallel = local.utility2.onParallel(onError2);
-            onParallel.counter += 1;
-            // build package.json
-            options.packageJson = JSON.parse(local.fs.readFileSync('package.json', 'utf8'));
-            onParallel.counter += 1;
-            local.buildReadme({
-                dataFrom: '\n# package.json\n```json\n' + JSON.stringify(options.packageJson) +
-                    '\n```\n',
-                modeForce: true
-            }, onParallel);
-            options.packageJson = JSON.parse(local.fs.readFileSync('package.json', 'utf8'));
-            switch (local.env.GITHUB_ORG) {
-            case 'npmdoc':
-                // update package.json
-                local.objectSetOverride(options.packageJson, local.objectLiteralize({
-                    keywords: ['documentation', local.env.npm_package_buildCustomOrg]
-                }), 2);
-                // build apidoc.html
-                onParallel.counter += 1;
-                local.buildApidoc({
-                    dir: local.env.npm_package_buildCustomOrg,
-                    modeForce: true,
-                    modulePathList: options.modulePathList
-                }, onParallel);
-                // build README.md
-                options.readme = local.apidocCreate({
-                    dir: local.env.npm_package_buildCustomOrg,
-                    header: local.assetsDict['/assets.readmeCustomOrgNpmdocHeader.template.md'],
-                    modulePathList: options.modulePathList,
-                    template: local.apidoc.templateApidocMd
-                });
-                local.fs.writeFileSync('README.md', options.readme);
-                break;
-            case 'npmtest':
-                // update package.json
-                local.objectSetOverride(options.packageJson, local.objectLiteralize({
-                    keywords: ['coverage', 'test', local.env.npm_package_buildCustomOrg]
-                }), 2);
-                // build README.md
-                options.readme = local.apidocCreate({
-                    dir: local.env.npm_package_buildCustomOrg,
-                    modeRenderFast: true,
-                    modulePathList: options.modulePathList,
-                    template: local.assetsDict['/assets.readmeCustomOrgNpmtest.template.md']
-                });
-                local.fs.writeFileSync('README.md', options.readme);
-                break;
-            }
-            // re-build package.json
-            options.packageJson.description = (/\w.*/).exec(options.readme)[0]
-                .replace((/ {2,}/g), ' ')
-                .trim();
-            local.fs.writeFileSync(
-                'package.json',
-                local.jsonStringifyOrdered(options.packageJson, null, 4) + '\n'
-            );
-            onParallel();
-        };
-
-        // legacy-hack
-        local.buildNpmdoc = local.buildApidocCustomOrg;
 
         local.buildApp = function (options, onError) {
         /*
@@ -12140,6 +12098,87 @@ return Utf8ArrayToStr(bff);
                         onError();
                     });
             });
+        };
+
+        local.buildCustomOrg = function (options, onError) {
+        /*
+         * this function will build the customOrg
+         */
+            var done, onError2, onParallel;
+            if (!local.env.npm_package_buildCustomOrg && !options.modeForce) {
+                onError();
+                return;
+            }
+            // ensure exit after 5 minutes
+            setTimeout(process.exit, 5 * 60 * 1000);
+            onError2 = function (error) {
+                local.onErrorDefault(error);
+                if (done) {
+                    return;
+                }
+                done = true;
+                // try to recover from error
+                setTimeout(onError, error && local.timeoutDefault);
+            };
+            // try to salvage uncaughtException
+            process.on('uncaughtException', onError2);
+            onParallel = local.utility2.onParallel(onError2);
+            onParallel.counter += 1;
+            // build package.json
+            options.packageJson = JSON.parse(local.fs.readFileSync('package.json', 'utf8'));
+            onParallel.counter += 1;
+            local.buildReadme({
+                dataFrom: '\n# package.json\n```json\n' + JSON.stringify(options.packageJson) +
+                    '\n```\n',
+                modeForce: true
+            }, onParallel);
+            options.packageJson = JSON.parse(local.fs.readFileSync('package.json', 'utf8'));
+            switch (local.env.GITHUB_ORG) {
+            case 'npmdoc':
+                // update package.json
+                local.objectSetOverride(options.packageJson, local.objectLiteralize({
+                    keywords: ['documentation', local.env.npm_package_buildCustomOrg]
+                }), 2);
+                // build apidoc.html
+                onParallel.counter += 1;
+                local.buildApidoc({
+                    dir: local.env.npm_package_buildCustomOrg,
+                    modeForce: true,
+                    modulePathList: options.modulePathList
+                }, onParallel);
+                // build README.md
+                options.readme = local.apidocCreate({
+                    dir: local.env.npm_package_buildCustomOrg,
+                    header: local.assetsDict['/assets.readmeCustomOrg.npmdoc.template.md'],
+                    modulePathList: options.modulePathList,
+                    template: local.apidoc.templateApidocMd
+                });
+                local.fs.writeFileSync('README.md', options.readme);
+                break;
+            case 'npmtest':
+                // update package.json
+                local.objectSetOverride(options.packageJson, local.objectLiteralize({
+                    keywords: ['coverage', 'test', local.env.npm_package_buildCustomOrg]
+                }), 2);
+                // build README.md
+                options.readme = local.apidocCreate({
+                    dir: local.env.npm_package_buildCustomOrg,
+                    modeRenderFast: true,
+                    modulePathList: options.modulePathList,
+                    template: local.assetsDict['/assets.readmeCustomOrg.npmtest.template.md']
+                });
+                local.fs.writeFileSync('README.md', options.readme);
+                break;
+            }
+            // re-build package.json
+            options.packageJson.description = (/\w.*/).exec(options.readme)[0]
+                .replace((/ {2,}/g), ' ')
+                .trim();
+            local.fs.writeFileSync(
+                'package.json',
+                local.jsonStringifyOrdered(options.packageJson, null, 4) + '\n'
+            );
+            onParallel();
         };
 
         local.buildLib = function (options, onError) {
@@ -12363,119 +12402,131 @@ return Utf8ArrayToStr(bff);
             return tmp;
         };
 
-        local.dbTableTravisRepoCreate = function (options, onError) {
+        local.dbTableTravisOrgCreate = function (options, onError) {
         /*
-         * this function will create a persistent dbTableTravisRepo
+         * this function will create a persistent dbTableTravisOrg
          */
+            options = local.objectSetDefault(options, { githubOrg: local.env.GITHUB_ORG });
             options = local.objectSetDefault(options, {
-                idIndexCreateList: [{ name: 'githubRepo' }],
+                name: 'TravisOrg.' + options.githubOrg,
+                sizeLimit: 1000,
                 sortDefault: [{
-                    fieldName: 'githubRepo'
+                    fieldName: '_id'
                 }, {
-                    fieldName: 'last_build_started_at'
-                }],
-                name: 'TravisRepo'
+                    fieldName: 'buildFinishedAt'
+                }, {
+                    fieldName: 'buildState'
+                }, {
+                    fieldName: 'active'
+                }]
             });
-            local.dbTableTravisRepo = local.db.dbTableCreateOne(options, onError);
-            return local.dbTableTravisRepo;
+            local.dbTableTravisOrg = local.db.dbTableCreateOne(options, onError);
+            return local.dbTableTravisOrg;
         };
 
-        local.dbTableTravisRepoCrudGetManyByQuery = function (options, onError) {
+        local.dbTableTravisOrgUpdate = function (options, onError) {
         /*
-         * this function will query dbTableTravisRepo
-         */
-            options = local.objectSetDefault(options, {
-                fieldList: ['githubRepo', 'last_build_started_at', 'last_build_status'],
-                sort: [{ fieldName: 'last_build_started_at' }]
-            });
-            return local.dbTableTravisRepoCreate().crudGetManyByQuery(options, onError);
-        };
-
-        local.dbTableTravisRepoUpdate = function (options, onError) {
-        /*
-         * this function will update dbTableTravisRepo with active, public repos
+         * this function will update dbTableTravisOrg with active, public repos
          */
             var dbRowList, self;
-            options = local.objectSetDefault(options, { queryLimit: 100 });
+            options = local.objectSetDefault(options, { githubOrg: local.env.GITHUB_ORG });
             local.onNext(options, function (error, data) {
                 switch (options.modeNext) {
                 case 1:
-                    local.timeElapsedStart(options);
-                    self = local.dbTableTravisRepo =
-                        local.dbTableTravisRepoCreate(options, options.onNext);
+                    self = local.dbTableTravisOrg =
+                        local.dbTableTravisOrgCreate(options, options.onNext);
                     break;
                 case 2:
-                    self = local.dbTableTravisRepo = data;
-                    console.error('dbTableTravisRepoUpdate - updating ' +
-                        Math.min(options.queryLimit, self.crudCountAll()) +
-                        ' of ' + self.crudCountAll() + ' dbRows ...');
-                    local.ajax({
-                        headers: { Authorization: 'token ' + local.env.TRAVIS_ACCESS_TOKEN },
-                        url: 'https://api.travis-ci.org/hooks'
-                    }, options.onNext);
+                    self = local.dbTableTravisOrg = data;
+                    data = {
+                        headers: {
+                            'Travis-API-Version': '3',
+                            Authorization: 'token ' + local.env.TRAVIS_ACCESS_TOKEN
+                        },
+                        url: 'https://api.travis-ci.org/repos?limit=1'
+                    };
+                    console.error('fetching ' + data.url + ' ...');
+                    local.ajax(data, options.onNext);
                     break;
                 case 3:
-                    // validate no error occurred
-                    local.assert(!error, error);
-                    data = JSON.parse(data.responseText)
-                        .filter(function (dbRow) {
-                            return dbRow.active === true && dbRow.private === false;
-                        })
-                        .map(function (dbRow) {
-                            dbRow.githubRepo = dbRow.uid.replace(':', '/');
-                            dbRow.uid = null;
-                            dbRow.url = null;
-                            return dbRow;
-                        });
-                    self.crudUpdateManyById(data);
-                    dbRowList = local.dbTableTravisRepoCrudGetManyByQuery({
-                        limit: options.queryLimit
-                    });
+                    console.error('... fetched ' + data.url);
+                    data = JSON.parse(data.responseText)['@pagination'].count;
+                    dbRowList = [];
                     local.onParallelList({
-                        list: dbRowList,
-                        rateLimit: options.rateLimit
-                    }, function (dbRow, onParallel) {
-                        dbRow = dbRow.element;
+                        list: [{
+                            offset: 0,
+                            sort_by: 'asc'
+                        }, {
+                            offset: 100,
+                            sort_by: 'asc'
+                        }, {
+                            offset: 200,
+                            sort_by: 'asc'
+                        }, {
+                            offset: 300,
+                            sort_by: 'asc'
+                        }, {
+                            offset: 400,
+                            sort_by: 'asc'
+                        }, {
+                            offset: data - 500,
+                            sort_by: 'desc'
+                        }, {
+                            offset: data - 400,
+                            sort_by: 'desc'
+                        }, {
+                            offset: data - 300,
+                            sort_by: 'desc'
+                        }, {
+                            offset: data - 200,
+                            sort_by: 'desc'
+                        }, {
+                            offset: data - 100,
+                            sort_by: 'desc'
+                        }]
+                    }, function (options2, onParallel) {
                         onParallel.counter += 1;
-                        local.ajax({
-                            url: 'https://api.travis-ci.org/repos/' + dbRow.githubRepo
-                        }, function (error, data) {
+                        options2 = {
+                            headers: {
+                                'Travis-API-Version': '3',
+                                Authorization: 'token ' + local.env.TRAVIS_ACCESS_TOKEN
+                            },
+                            url: 'https://api.travis-ci.org/repos?' +
+                                'include=repository.current_build&' +
+                                'limit=100&' +
+                                'offset=' + options2.element.offset + '&' +
+                                'sort_by=current_build%3A' + options2.element.sort_by
+                        };
+                        console.error('fetching ' + options2.url + ' ...');
+                        local.ajax(options2, function (error, data) {
                             // validate no error occurred
                             local.assert(!error, error);
-                            data = JSON.parse(data.responseText);
-                            Object.keys(data).forEach(function (key) {
-                                if (data[key] !== null) {
-                                    dbRow[key] = data[key];
-                                }
-                            });
-                            // ignore extraneous data to save space
-                            dbRow.description = null;
-                            dbRow.last_build_duration = null;
-                            dbRow.last_build_finished_at = null;
-                            dbRow.last_build_id = null;
-                            dbRow.last_build_number = null;
-                            dbRow.last_build_result = null;
-                            dbRow.public_key = null;
-                            dbRow.slug = null;
-                            dbRow.uid = null;
-                            dbRow.url = null;
-                            if (onParallel.counter === 1 || ((onParallel.ii + 1) % 10 === 0 &&
-                                    local.timeElapsedPoll(options).timeElapsed >= 5000)) {
-                                local.timeElapsedStart(options, Date.now());
-                                console.error('dbTableTravisRepoUpdate - updated ' +
-                                    (onParallel.ii + 1) + ' dbRows');
-                            }
+                            dbRowList = dbRowList
+                                .concat(JSON.parse(data.responseText).repositories);
+                            console.error('... fetched ' + options2.url);
                             onParallel();
                         });
                     }, options.onNext);
                     break;
                 case 4:
-                    self.crudSetManyById(dbRowList);
-                    self.save(options.onNext);
+                    self.crudSetManyById(dbRowList
+                        .filter(function (dbRow) {
+                            return dbRow.private === false && dbRow.slug.indexOf(
+                                options.githubOrg + '/node-' + options.githubOrg + '-'
+                            ) === 0;
+                        })
+                        .map(function (dbRow) {
+                            data = dbRow.current_build || {};
+                            return {
+                                _id: dbRow.name.replace('node-' + options.githubOrg + '-', ''),
+                                active: dbRow.active,
+                                buildFinishedAt: data.finished_at,
+                                buildState: data.state
+                            };
+                        }), options.onNext);
                     break;
                 default:
-                    local.onErrorDefault(error);
-                    local.setTimeoutOnError(onError, null, self);
+                    local.setTimeoutOnError(onError, error, self);
                 }
             });
             options.modeNext = 0;
@@ -13422,7 +13473,7 @@ return Utf8ArrayToStr(bff);
          * this function will if error exists, then print error.stack to stderr
          */
             if (error && !local.global.__coverage__) {
-                console.error(error.stack);
+                console.error(error);
             }
         };
 
@@ -13572,7 +13623,7 @@ return Utf8ArrayToStr(bff);
             ii = -1;
             onParallel.ii = -1;
             onParallel.remaining = options.list.length;
-            options.rateLimit = Number(options.rateLimit) || 4;
+            options.rateLimit = Number(options.rateLimit) || 6;
             options.rateLimit = Math.max(options.rateLimit, 3);
             options.retryLimit = Number(options.retryLimit) || 2;
             onEach2();
@@ -13716,7 +13767,7 @@ return Utf8ArrayToStr(bff);
              */
                 // debug error
                 global.utility2_debugReplError = error;
-                console.error(error.stack);
+                console.error(error);
             };
             // save repl eval function
             self.evalDefault = self.eval;
@@ -14892,7 +14943,8 @@ instruction\n\
             // shallow-copy testPlatform.testCaseList to prevent side-effects
             // from in-place sort from testReportMerge
             local.onParallelList({
-                list: testPlatform.testCaseList.slice()
+                list: testPlatform.testCaseList.slice(),
+                rateLimit: Infinity
             }, function (testCase, onParallel) {
                 var onError, timerTimeout;
                 onError = function (error) {
@@ -15475,15 +15527,22 @@ instruction\n\
         case 'browserTest':
             local.browserTest({}, local.exit);
             return;
-        case 'dbTableTravisRepoCrudGetManyByQuery':
-            local.dbTableTravisRepoCreate({}, function () {
-                console.log(JSON.stringify(local.dbTableTravisRepoCrudGetManyByQuery(
-                    JSON.parse(process.argv[3] || '{}')
-                ), null, 4));
+        case 'dbTableTravisOrgCrudGetManyByQuery':
+            local.dbTableTravisOrgCreate(JSON.parse(process.argv[3]), function (error, data) {
+                // validate no error occurred
+                local.assert(!error, error);
+                console.log(data.crudGetManyByQuery(JSON.parse(process.argv[3]))
+                    .map(function (element) {
+                        return element._id;
+                    })
+                    .join('\n'));
             });
             return;
-        case 'dbTableTravisRepoUpdate':
-            local.dbTableTravisRepoUpdate(JSON.parse(process.argv[3] || '{}'), local.exit);
+        case 'dbTableTravisOrgUpdate':
+            local.dbTableTravisOrgUpdate(
+                JSON.parse(process.argv[3]),
+                local.onErrorThrow
+            );
             return;
         case 'onParallelListSpawn':
             local.onParallelList({
@@ -15503,7 +15562,7 @@ instruction\n\
                         ' of ' + options.list.length + '] exitCode ' + exitCode);
                     onParallel(exitCode && new Error(exitCode), options);
                 });
-            }, local.exit);
+            }, local.onErrorThrow);
             return;
         }
         // init lib

@@ -1,6 +1,4 @@
-<!doctype html>
-<html lang="en">
-<head>
+<html lang="en"><head>
     <title>Code coverage report for node-npmtest-gulp-load-plugins/gulp-load-plugins/index.js</title>
     <meta charset="utf-8">
     <style>
@@ -210,11 +208,11 @@
         
         Ignored: <span class="metric"><span class="ignore-none">none</span></span> &nbsp;&nbsp;&nbsp;&nbsp;
     </h2>
-    <div class="path"><a href="../../index.html">All files</a> &#187; <a href="index.html">node-npmtest-gulp-load-plugins/gulp-load-plugins/</a> &#187; index.js</div>
+    <div class="path"><a href="../../index.html">All files</a> » <a href="index.html">node-npmtest-gulp-load-plugins/gulp-load-plugins/</a> » index.js</div>
 </div>
 <div class="body">
 <pre><table class="coverage">
-<tr><td class="line-count">1
+<tbody><tr><td class="line-count">1
 2
 3
 4
@@ -580,170 +578,170 @@ var findup = require('findup-sync');
 var resolve = require('resolve');
 var path = require('path');
 &nbsp;
-<span class="fstat-no" title="function not covered" >function arrayify(el) {</span>
-<span class="cstat-no" title="statement not covered" >  return Array.isArray(el) ? el : [el];</span>
+<span class="fstat-no" title="function not covered">function arrayify(el) {</span>
+<span class="cstat-no" title="statement not covered">  return Array.isArray(el) ? el : [el];</span>
 }
 &nbsp;
-<span class="fstat-no" title="function not covered" >function camelize(str) {</span>
-<span class="cstat-no" title="statement not covered" >  return str.replace(/-(\w)/g, <span class="fstat-no" title="function not covered" >function(m, p1) {</span></span>
-<span class="cstat-no" title="statement not covered" >    return p1.toUpperCase();</span>
+<span class="fstat-no" title="function not covered">function camelize(str) {</span>
+<span class="cstat-no" title="statement not covered">  return str.replace(/-(\w)/g, <span class="fstat-no" title="function not covered">function(m, p1) {</span></span>
+<span class="cstat-no" title="statement not covered">    return p1.toUpperCase();</span>
   });
 }
 &nbsp;
 // code from https://github.com/gulpjs/gulp-util/blob/master/lib/log.js
 // to use the same functionality as gulp-util for backwards compatibility
 // with gulp 3x cli
-<span class="fstat-no" title="function not covered" >function logger() {</span>
-<span class="cstat-no" title="statement not covered" >  if (hasGulplog()) {</span>
+<span class="fstat-no" title="function not covered">function logger() {</span>
+<span class="cstat-no" title="statement not covered">  if (hasGulplog()) {</span>
     // specifically deferring loading here to keep from registering it globally
-<span class="cstat-no" title="statement not covered" >    var gulplog = require('gulplog');</span>
-<span class="cstat-no" title="statement not covered" >    gulplog.info.apply(gulplog, arguments);</span>
+<span class="cstat-no" title="statement not covered">    var gulplog = require('gulplog');</span>
+<span class="cstat-no" title="statement not covered">    gulplog.info.apply(gulplog, arguments);</span>
   } else {
     // specifically defering loading because it might not be used
-<span class="cstat-no" title="statement not covered" >    var fancylog = require('fancy-log');</span>
-<span class="cstat-no" title="statement not covered" >    fancylog.apply(null, arguments);</span>
+<span class="cstat-no" title="statement not covered">    var fancylog = require('fancy-log');</span>
+<span class="cstat-no" title="statement not covered">    fancylog.apply(null, arguments);</span>
   }
 }
 &nbsp;
-<span class="fstat-no" title="function not covered" >function getPattern(options) {</span>
-<span class="cstat-no" title="statement not covered" >  var defaultPatterns = ['gulp-*', 'gulp.*', '@*/gulp{-,.}*'];</span>
-<span class="cstat-no" title="statement not covered" >  var overridePattern = 'overridePattern' in options ? !!options.overridePattern : true;</span>
-<span class="cstat-no" title="statement not covered" >  if (overridePattern) {</span>
-<span class="cstat-no" title="statement not covered" >    return arrayify(options.pattern || defaultPatterns);</span>
+<span class="fstat-no" title="function not covered">function getPattern(options) {</span>
+<span class="cstat-no" title="statement not covered">  var defaultPatterns = ['gulp-*', 'gulp.*', '@*/gulp{-,.}*'];</span>
+<span class="cstat-no" title="statement not covered">  var overridePattern = 'overridePattern' in options ? !!options.overridePattern : true;</span>
+<span class="cstat-no" title="statement not covered">  if (overridePattern) {</span>
+<span class="cstat-no" title="statement not covered">    return arrayify(options.pattern || defaultPatterns);</span>
   }
-<span class="cstat-no" title="statement not covered" >  return defaultPatterns.concat(arrayify(options.pattern));</span>
+<span class="cstat-no" title="statement not covered">  return defaultPatterns.concat(arrayify(options.pattern));</span>
 }
 &nbsp;
-module.exports = <span class="fstat-no" title="function not covered" >function(options) {</span>
-<span class="cstat-no" title="statement not covered" >  var finalObject = {};</span>
-<span class="cstat-no" title="statement not covered" >  var configObject;</span>
-<span class="cstat-no" title="statement not covered" >  var requireFn;</span>
-<span class="cstat-no" title="statement not covered" >  options = options || {};</span>
+module.exports = <span class="fstat-no" title="function not covered">function(options) {</span>
+<span class="cstat-no" title="statement not covered">  var finalObject = {};</span>
+<span class="cstat-no" title="statement not covered">  var configObject;</span>
+<span class="cstat-no" title="statement not covered">  var requireFn;</span>
+<span class="cstat-no" title="statement not covered">  options = options || {};</span>
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  var DEBUG = options.DEBUG || false;</span>
-<span class="cstat-no" title="statement not covered" >  var pattern = getPattern(options);</span>
-<span class="cstat-no" title="statement not covered" >  var config = options.config || findup('package.json', { cwd: parentDir });</span>
-<span class="cstat-no" title="statement not covered" >  var scope = arrayify(options.scope || ['dependencies', 'devDependencies', 'peerDependencies']);</span>
-<span class="cstat-no" title="statement not covered" >  var replaceString = options.replaceString || /^gulp(-|\.)/;</span>
-<span class="cstat-no" title="statement not covered" >  var camelizePluginName = options.camelize !== false;</span>
-<span class="cstat-no" title="statement not covered" >  var lazy = 'lazy' in options ? !!options.lazy : true;</span>
-<span class="cstat-no" title="statement not covered" >  var renameObj = options.rename || {};</span>
-<span class="cstat-no" title="statement not covered" >  var maintainScope = 'maintainScope' in options ? !!options.maintainScope : true;</span>
+<span class="cstat-no" title="statement not covered">  var DEBUG = options.DEBUG || false;</span>
+<span class="cstat-no" title="statement not covered">  var pattern = getPattern(options);</span>
+<span class="cstat-no" title="statement not covered">  var config = options.config || findup('package.json', { cwd: parentDir });</span>
+<span class="cstat-no" title="statement not covered">  var scope = arrayify(options.scope || ['dependencies', 'devDependencies', 'peerDependencies']);</span>
+<span class="cstat-no" title="statement not covered">  var replaceString = options.replaceString || /^gulp(-|\.)/;</span>
+<span class="cstat-no" title="statement not covered">  var camelizePluginName = options.camelize !== false;</span>
+<span class="cstat-no" title="statement not covered">  var lazy = 'lazy' in options ? !!options.lazy : true;</span>
+<span class="cstat-no" title="statement not covered">  var renameObj = options.rename || {};</span>
+<span class="cstat-no" title="statement not covered">  var maintainScope = 'maintainScope' in options ? !!options.maintainScope : true;</span>
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  logDebug('Debug enabled with options: ' + JSON.stringify(options));</span>
+<span class="cstat-no" title="statement not covered">  logDebug('Debug enabled with options: ' + JSON.stringify(options));</span>
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  var renameFn = options.renameFn || <span class="fstat-no" title="function not covered" >function(name) {</span></span>
-<span class="cstat-no" title="statement not covered" >    name = name.replace(replaceString, '');</span>
-<span class="cstat-no" title="statement not covered" >    return camelizePluginName ? camelize(name) : name;</span>
+<span class="cstat-no" title="statement not covered">  var renameFn = options.renameFn || <span class="fstat-no" title="function not covered">function(name) {</span></span>
+<span class="cstat-no" title="statement not covered">    name = name.replace(replaceString, '');</span>
+<span class="cstat-no" title="statement not covered">    return camelizePluginName ? camelize(name) : name;</span>
   };
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  var postRequireTransforms = options.postRequireTransforms || {};</span>
+<span class="cstat-no" title="statement not covered">  var postRequireTransforms = options.postRequireTransforms || {};</span>
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  if (typeof options.requireFn === 'function') {</span>
-<span class="cstat-no" title="statement not covered" >    requireFn = options.requireFn;</span>
-  } else <span class="cstat-no" title="statement not covered" >if (typeof config === 'string') {</span>
-<span class="cstat-no" title="statement not covered" >    requireFn = <span class="fstat-no" title="function not covered" >function(name) {</span></span>
+<span class="cstat-no" title="statement not covered">  if (typeof options.requireFn === 'function') {</span>
+<span class="cstat-no" title="statement not covered">    requireFn = options.requireFn;</span>
+  } else <span class="cstat-no" title="statement not covered">if (typeof config === 'string') {</span>
+<span class="cstat-no" title="statement not covered">    requireFn = <span class="fstat-no" title="function not covered">function(name) {</span></span>
       // This searches up from the specified package.json file, making sure
       // the config option behaves as expected. See issue #56.
-<span class="cstat-no" title="statement not covered" >      var src = resolve.sync(name, { basedir: path.dirname(config) });</span>
-<span class="cstat-no" title="statement not covered" >      return require(src);</span>
+<span class="cstat-no" title="statement not covered">      var src = resolve.sync(name, { basedir: path.dirname(config) });</span>
+<span class="cstat-no" title="statement not covered">      return require(src);</span>
     };
   } else {
-<span class="cstat-no" title="statement not covered" >    requireFn = require;</span>
+<span class="cstat-no" title="statement not covered">    requireFn = require;</span>
   }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  configObject = (typeof config === 'string') ? require(config) : config;</span>
+<span class="cstat-no" title="statement not covered">  configObject = (typeof config === 'string') ? require(config) : config;</span>
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  if (!configObject) {</span>
-<span class="cstat-no" title="statement not covered" >    throw new Error('Could not find dependencies. Do you have a package.json file in your project?');</span>
+<span class="cstat-no" title="statement not covered">  if (!configObject) {</span>
+<span class="cstat-no" title="statement not covered">    throw new Error('Could not find dependencies. Do you have a package.json file in your project?');</span>
   }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  var names = scope.reduce(<span class="fstat-no" title="function not covered" >function(result, prop) {</span></span>
-<span class="cstat-no" title="statement not covered" >    return result.concat(Object.keys(configObject[prop] || {}));</span>
+<span class="cstat-no" title="statement not covered">  var names = scope.reduce(<span class="fstat-no" title="function not covered">function(result, prop) {</span></span>
+<span class="cstat-no" title="statement not covered">    return result.concat(Object.keys(configObject[prop] || {}));</span>
   }, []);
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  logDebug(names.length + ' plugin(s) found: ' + names.join(' '));</span>
+<span class="cstat-no" title="statement not covered">  logDebug(names.length + ' plugin(s) found: ' + names.join(' '));</span>
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  pattern.push('!gulp-load-plugins');</span>
+<span class="cstat-no" title="statement not covered">  pattern.push('!gulp-load-plugins');</span>
 &nbsp;
-<span class="fstat-no" title="function not covered" >  function logDebug(message) {</span>
-<span class="cstat-no" title="statement not covered" >    if (DEBUG) {</span>
-<span class="cstat-no" title="statement not covered" >      logger('gulp-load-plugins: ' + message);</span>
+<span class="fstat-no" title="function not covered">  function logDebug(message) {</span>
+<span class="cstat-no" title="statement not covered">    if (DEBUG) {</span>
+<span class="cstat-no" title="statement not covered">      logger('gulp-load-plugins: ' + message);</span>
     }
   }
 &nbsp;
-<span class="fstat-no" title="function not covered" >  function defineProperty(object, transform, requireName, name, maintainScope) {</span>
-<span class="cstat-no" title="statement not covered" >    var err;</span>
-<span class="cstat-no" title="statement not covered" >    if (object[requireName]) {</span>
-<span class="cstat-no" title="statement not covered" >      logDebug('error: defineProperty ' + name);</span>
-<span class="cstat-no" title="statement not covered" >      err = maintainScope ?</span>
+<span class="fstat-no" title="function not covered">  function defineProperty(object, transform, requireName, name, maintainScope) {</span>
+<span class="cstat-no" title="statement not covered">    var err;</span>
+<span class="cstat-no" title="statement not covered">    if (object[requireName]) {</span>
+<span class="cstat-no" title="statement not covered">      logDebug('error: defineProperty ' + name);</span>
+<span class="cstat-no" title="statement not covered">      err = maintainScope ?</span>
         'Could not define the property "' + requireName + '", you may have repeated dependencies in your package.json like' + ' "gulp-' + requireName + '" and ' + '"' + requireName + '"' :
         'Could not define the property "' + requireName + '", you may have repeated a dependency in another scope like' + ' "gulp-' + requireName + '" and ' + '"@foo/gulp-' + requireName + '"';
-<span class="cstat-no" title="statement not covered" >      throw new Error(err);</span>
+<span class="cstat-no" title="statement not covered">      throw new Error(err);</span>
     }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    if (lazy) {</span>
-<span class="cstat-no" title="statement not covered" >      logDebug('lazyload: adding property ' + requireName);</span>
-<span class="cstat-no" title="statement not covered" >      Object.defineProperty(object, requireName, {</span>
+<span class="cstat-no" title="statement not covered">    if (lazy) {</span>
+<span class="cstat-no" title="statement not covered">      logDebug('lazyload: adding property ' + requireName);</span>
+<span class="cstat-no" title="statement not covered">      Object.defineProperty(object, requireName, {</span>
         enumerable: true,
-        get: <span class="fstat-no" title="function not covered" >function() {</span>
-<span class="cstat-no" title="statement not covered" >          logDebug('lazyload: requiring ' + name + '...');</span>
-<span class="cstat-no" title="statement not covered" >          return transform(requireName, requireFn(name));</span>
+        get: <span class="fstat-no" title="function not covered">function() {</span>
+<span class="cstat-no" title="statement not covered">          logDebug('lazyload: requiring ' + name + '...');</span>
+<span class="cstat-no" title="statement not covered">          return transform(requireName, requireFn(name));</span>
         }
       });
     } else {
-<span class="cstat-no" title="statement not covered" >      logDebug('requiring ' + name + '...');</span>
-<span class="cstat-no" title="statement not covered" >      object[requireName] = transform(requireName, requireFn(name));</span>
+<span class="cstat-no" title="statement not covered">      logDebug('requiring ' + name + '...');</span>
+<span class="cstat-no" title="statement not covered">      object[requireName] = transform(requireName, requireFn(name));</span>
     }
   }
 &nbsp;
-<span class="fstat-no" title="function not covered" >  function getRequireName(name) {</span>
-<span class="cstat-no" title="statement not covered" >    var requireName;</span>
+<span class="fstat-no" title="function not covered">  function getRequireName(name) {</span>
+<span class="cstat-no" title="statement not covered">    var requireName;</span>
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    if (renameObj[name]) {</span>
-<span class="cstat-no" title="statement not covered" >      requireName = options.rename[name];</span>
+<span class="cstat-no" title="statement not covered">    if (renameObj[name]) {</span>
+<span class="cstat-no" title="statement not covered">      requireName = options.rename[name];</span>
     } else {
-<span class="cstat-no" title="statement not covered" >      requireName = renameFn(name);</span>
+<span class="cstat-no" title="statement not covered">      requireName = renameFn(name);</span>
     }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    logDebug('renaming ' + name + ' to ' + requireName);</span>
+<span class="cstat-no" title="statement not covered">    logDebug('renaming ' + name + ' to ' + requireName);</span>
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    return requireName;</span>
+<span class="cstat-no" title="statement not covered">    return requireName;</span>
   }
 &nbsp;
-<span class="fstat-no" title="function not covered" >  function applyTransform(requireName, plugin) {</span>
-<span class="cstat-no" title="statement not covered" >    var transform = postRequireTransforms[requireName];</span>
+<span class="fstat-no" title="function not covered">  function applyTransform(requireName, plugin) {</span>
+<span class="cstat-no" title="statement not covered">    var transform = postRequireTransforms[requireName];</span>
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    if (transform &amp;&amp; typeof transform === 'function') { // if postRequireTransform function is passed, pass it the plugin and return it</span>
-<span class="cstat-no" title="statement not covered" >      logDebug('transforming ' + requireName);</span>
-<span class="cstat-no" title="statement not covered" >      return transform(plugin);</span>
+<span class="cstat-no" title="statement not covered">    if (transform &amp;&amp; typeof transform === 'function') { // if postRequireTransform function is passed, pass it the plugin and return it</span>
+<span class="cstat-no" title="statement not covered">      logDebug('transforming ' + requireName);</span>
+<span class="cstat-no" title="statement not covered">      return transform(plugin);</span>
     } else {
-<span class="cstat-no" title="statement not covered" >      return plugin; </span>// if no postRequireTransform function passed, return the plugin as is
+<span class="cstat-no" title="statement not covered">      return plugin; </span>// if no postRequireTransform function passed, return the plugin as is
     }
   }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  var scopeTest = new RegExp('^@');</span>
-<span class="cstat-no" title="statement not covered" >  var scopeDecomposition = new RegExp('^@(.+)/(.+)');</span>
+<span class="cstat-no" title="statement not covered">  var scopeTest = new RegExp('^@');</span>
+<span class="cstat-no" title="statement not covered">  var scopeDecomposition = new RegExp('^@(.+)/(.+)');</span>
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  unique(micromatch(names, pattern)).forEach(<span class="fstat-no" title="function not covered" >function(name) {</span></span>
-<span class="cstat-no" title="statement not covered" >    var decomposition;</span>
-<span class="cstat-no" title="statement not covered" >    var fObject = finalObject;</span>
-<span class="cstat-no" title="statement not covered" >    if (scopeTest.test(name)) {</span>
-<span class="cstat-no" title="statement not covered" >      decomposition = scopeDecomposition.exec(name);</span>
-<span class="cstat-no" title="statement not covered" >      if (maintainScope) {</span>
-<span class="cstat-no" title="statement not covered" >        if (!fObject.hasOwnProperty(decomposition[1])) {</span>
-<span class="cstat-no" title="statement not covered" >          finalObject[decomposition[1]] = {};</span>
+<span class="cstat-no" title="statement not covered">  unique(micromatch(names, pattern)).forEach(<span class="fstat-no" title="function not covered">function(name) {</span></span>
+<span class="cstat-no" title="statement not covered">    var decomposition;</span>
+<span class="cstat-no" title="statement not covered">    var fObject = finalObject;</span>
+<span class="cstat-no" title="statement not covered">    if (scopeTest.test(name)) {</span>
+<span class="cstat-no" title="statement not covered">      decomposition = scopeDecomposition.exec(name);</span>
+<span class="cstat-no" title="statement not covered">      if (maintainScope) {</span>
+<span class="cstat-no" title="statement not covered">        if (!fObject.hasOwnProperty(decomposition[1])) {</span>
+<span class="cstat-no" title="statement not covered">          finalObject[decomposition[1]] = {};</span>
         }
-<span class="cstat-no" title="statement not covered" >        fObject = finalObject[decomposition[1]];</span>
+<span class="cstat-no" title="statement not covered">        fObject = finalObject[decomposition[1]];</span>
       }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >      defineProperty(fObject, applyTransform, getRequireName(decomposition[2]), name, maintainScope);</span>
+<span class="cstat-no" title="statement not covered">      defineProperty(fObject, applyTransform, getRequireName(decomposition[2]), name, maintainScope);</span>
     } else {
-<span class="cstat-no" title="statement not covered" >      defineProperty(fObject, applyTransform, getRequireName(name), name, maintainScope);</span>
+<span class="cstat-no" title="statement not covered">      defineProperty(fObject, applyTransform, getRequireName(name), name, maintainScope);</span>
     }
   });
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  return finalObject;</span>
+<span class="cstat-no" title="statement not covered">  return finalObject;</span>
 };
 &nbsp;
 var parentDir = path.dirname(module.parent.filename);
@@ -752,10 +750,11 @@ var parentDir = path.dirname(module.parent.filename);
 delete require.cache[__filename];
 &nbsp;
 &nbsp;</pre></td></tr>
-</table></pre>
+</tbody></table></pre>
 </div>
 <div class="footer">
     <div class="meta">Generated by <a href="https://github.com/kaizhu256/node-utility2" target="_blank">utility2</a> at Sat Apr 15 2017 21:50:18 GMT+0000 (UTC)</div>
 </div>
-</body>
-</html>
+
+
+</body></html>

@@ -36,7 +36,7 @@
 <tspan x="10" y="538">  │ └── sparkles@1.0.0 </tspan>
 <tspan x="10" y="554">  ├─┬ micromatch@2.3.11 </tspan>
 <tspan x="10" y="570">  │ ├─┬ arr-diff@2.0.0 </tspan>
-<tspan x="10" y="586">  │ │ └── arr-flatten@1.0.1 </tspan>
+<tspan x="10" y="586">  │ │ └── arr-flatten@1.0.2 </tspan>
 <tspan x="10" y="602">  │ ├─┬ braces@1.8.5 </tspan>
 <tspan x="10" y="618">  │ │ ├─┬ expand-range@1.8.2 </tspan>
 <tspan x="10" y="634">  │ │ │ └─┬ fill-range@2.2.3 </tspan>
