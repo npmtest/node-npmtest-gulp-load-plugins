@@ -5,7 +5,7 @@
 /*
 assets.app.js
 
-test coverage for [gulp-load-plugins (v1.5.0)](https://github.com/jackfranklin/gulp-load-plugins#readme) [![npm package](https://img.shields.io/npm/v/npmtest-gulp-load-plugins.svg?style=flat-square)](https://www.npmjs.org/package/npmtest-gulp-load-plugins) [![travis-ci.org build-status](https://api.travis-ci.org/npmtest/node-npmtest-gulp-load-plugins.svg)](https://travis-ci.org/npmtest/node-npmtest-gulp-load-plugins)
+#### test coverage for [gulp-load-plugins (v1.5.0)](https://github.com/jackfranklin/gulp-load-plugins#readme) [![npm package](https://img.shields.io/npm/v/npmtest-gulp-load-plugins.svg?style=flat-square)](https://www.npmjs.org/package/npmtest-gulp-load-plugins) [![travis-ci.org build-status](https://api.travis-ci.org/npmtest/node-npmtest-gulp-load-plugins.svg)](https://travis-ci.org/npmtest/node-npmtest-gulp-load-plugins)
 
 instruction
     1. save this script as assets.app.js
@@ -160,10 +160,7 @@ instruction
             ].some(function (modulePathList) {
                 modulePathList.some(function (modulePath) {
                     try {
-                        tmp = require('path').resolve(
-                            process.cwd(),
-                            modulePath + '/' + module
-                        );
+                        tmp = require('path').resolve(process.cwd(), modulePath + '/' + module);
                         result = require('fs').statSync(tmp).isDirectory() && tmp;
                         return result;
                     } catch (ignore) {
@@ -435,77 +432,6 @@ local.templateApidocHtml = '\
 </div>\n\
 </div>\n\
 ';
-
-local.templateApidocMd = '\
-{{#if header}} \
-{{header}} \
-{{#unless header}} \
-# api documentation for \
-{{#if env.npm_package_homepage}} \
-[{{env.npm_package_name}} (v{{env.npm_package_version}})]({{env.npm_package_homepage}}) \
-{{#unless env.npm_package_homepage}} \
-{{env.npm_package_name}} (v{{env.npm_package_version}}) \
-{{/if env.npm_package_homepage}} \
-\n\
-## {{env.npm_package_description}} \
-\n\
-{{/if header}} \
-\n\
-\n\
-\n\
-# <a name="apidoc.tableOfContents"></a>[table of contents](#apidoc.tableOfContents) \
-{{#each moduleList}} \
-\n\
-\n\
-#### [module {{name}}](#{{id}}) \
-    {{#each elementList}} \
-\n\
-1. \
-{{#if source}} \
-[{{name}} {{signature}}](#{{id}}) \
-{{#unless source}} \
-{{name}} \
-{{/if source}} \
-{{/each elementList}} \
-{{/each moduleList}} \
-{{#each moduleList}} \
-\n\
-\n\
-\n\
-\n\
-# <a name="{{id}}"></a>[module {{name}}](#{{id}}) \
-{{#each elementList}} \
-{{#if source}} \
-\n\
-\n\
-#### <a name="{{id}}"></a>[{{name}} {{signature}}](#{{id}}) \
-\n\
-- description and source-code \
-\n\
-```javascript \
-\n\
-{{source markdownCodeSafe}} \
-\n\
-``` \
-\n\
-- example usage \
-\n\
-```shell \
-\n\
-{{example markdownCodeSafe}} \
-\n\
-``` \
-{{/if source}} \
-{{/each elementList}} \
-{{/each moduleList}} \
-\n\
-\n\
-\n\
-\n\
-# misc \
-\n\
-- this document was created with [utility2](https://github.com/kaizhu256/node-utility2) \
-\n';
 /* jslint-ignore-end */
 
 
@@ -516,12 +442,15 @@ local.templateApidocMd = '\
         /*
          * this function will create the apidoc from options.dir
          */
-            var elementCreate, module, moduleMain, readExample, tmp, trimLeft;
+            var elementCreate, module, moduleMain, readExample, tmp, toString, trimLeft;
             elementCreate = function (module, prefix, key) {
             /*
              * this function will create the apidoc-element in the given module
              */
                 var element;
+                if (options.modeNoApidoc) {
+                    return element;
+                }
                 element = {};
                 element.moduleName = prefix.split('.');
                 // handle case where module is a function
@@ -539,19 +468,11 @@ local.templateApidocMd = '\
                     return element;
                 }
                 // init source
-                element.source = 'n/a';
-                // bug-workaround - catch and ignore error
-                // "Function.prototype.toString is not generic"
-                try {
-                    element.source = trimLeft(module[key].toString());
-                } catch (ignore) {
-                }
+                element.source = trimLeft(toString(module[key])) || 'n/a';
                 if (element.source.length > 4096) {
                     element.source = element.source.slice(0, 4096).trimRight() + ' ...';
                 }
-                element.source = (options.template === local.templateApidocHtml
-                    ? local.stringHtmlSafe(element.source)
-                    : element.source)
+                element.source = local.stringHtmlSafe(element.source)
                     .replace((/\([\S\s]*?\)/), function (match0) {
                         // init signature
                         element.signature = match0
@@ -570,15 +491,13 @@ local.templateApidocMd = '\
                     example.replace(
                         new RegExp('((?:\n.*?){8}\\.)(' + key + ')(\\((?:.*?\n){8})'),
                         function (match0, match1, match2, match3) {
-                            element.example = '...' + trimLeft(
-                                options.template === local.templateApidocHtml
-                                    ?  local.stringHtmlSafe(match1) +
-                                        '<span class="apidocCodeKeywordSpan">' +
-                                        local.stringHtmlSafe(match2) +
-                                        '</span>' +
-                                        local.stringHtmlSafe(match3)
-                                    : match0
-                            ).trimRight() + '\n...';
+                            // jslint-hack
+                            local.nop(match0);
+                            element.example = '...' + trimLeft(local.stringHtmlSafe(match1) +
+                                '<span class="apidocCodeKeywordSpan">' +
+                                local.stringHtmlSafe(match2) +
+                                '</span>' +
+                                local.stringHtmlSafe(match3)).trimRight() + '\n...';
                         }
                     );
                     return element.example;
@@ -594,6 +513,16 @@ local.templateApidocMd = '\
                     return ('\n\n\n\n\n\n\n\n' +
                         local.fs.readFileSync(local.path.resolve(options.dir, file), 'utf8') +
                         '\n\n\n\n\n\n\n\n').replace((/\r\n*/g), '\n');
+                } catch (errorCaught) {
+                    return '';
+                }
+            };
+            toString = function (value) {
+            /*
+             * this function will try to return the string form of the value
+             */
+                try {
+                    return String(value);
                 } catch (errorCaught) {
                     return '';
                 }
@@ -623,35 +552,31 @@ local.templateApidocMd = '\
             );
             local.objectSetDefault(options, {
                 env: {},
-                packageJson: JSON.parse(readExample('package.json'))
+                packageJson: JSON.parse(readExample('package.json')),
+                require: require
             });
             Object.keys(options.packageJson).forEach(function (key) {
                 tmp = options.packageJson[key];
                 // strip email from npmdoc documentation
                 // https://github.com/npmdoc/node-npmdoc-hpp/issues/1
                 if (tmp) {
-                    delete tmp.email;
+                    if (tmp.email) {
+                        delete tmp.email;
+                    }
                     if (Array.isArray(tmp)) {
                         tmp.forEach(function (element) {
-                            if (element) {
+                            if (element && element.email) {
                                 delete element.email;
                             }
                         });
                     }
                 }
-                if (key === 'readme' || key[0] === '_') {
+                if (key[0] === '_' || key === 'readme') {
                     delete options.packageJson[key];
                 } else if (typeof tmp === 'string') {
                     options.env['npm_package_' + key] = tmp;
                 }
             });
-            if (options.modeRenderFast) {
-                // render apidoc
-                options.result = local.templateRender(options.template, options)
-                    .trim()
-                    .replace((/ +$/gm), '') + '\n';
-                return options.result;
-            }
             local.objectSetDefault(options, {
                 blacklistDict: { global: global },
                 circularList: [global],
@@ -672,29 +597,36 @@ local.templateApidocMd = '\
                             (/^(?:readme)\b/i).test(file) ||
                             (/^(?:index|lib|test)\b.*\.js$/i).test(file);
                     })
-            ).map(readExample));
+            ).map(readExample))
+                .filter(function (element) {
+                    return element.trim();
+                })
+                .slice(0, 128);
             // init moduleMain
             try {
                 console.error('apidocCreate - requiring ' + options.dir + ' ...');
                 moduleMain = {};
                 moduleMain = options.moduleDict[options.env.npm_package_name] ||
-                    require(options.dir);
+                    options.require(options.dir);
                 console.error('apidocCreate - ... required ' + options.dir);
-            } catch (errorCaught) {
-                console.error(errorCaught);
+            } catch (ignore) {
             }
             tmp = {};
             // handle case where module is a function
             if (typeof moduleMain === 'function') {
                 (function () {
-                    var toString;
-                    toString = moduleMain.toString();
+                    var text;
+                    text = toString(moduleMain);
                     tmp = function () {
                         return;
                     };
-                    tmp.toString = function () {
-                        return toString;
-                    };
+                    // coverage-hack
+                    tmp();
+                    Object.defineProperties(tmp, { toString: { get: function () {
+                        return function () {
+                            return text;
+                        };
+                    } } });
                 }());
             }
             // normalize moduleMain
@@ -703,7 +635,8 @@ local.templateApidocMd = '\
             // init circularList - builtin
             Object.keys(process.binding('natives')).forEach(function (key) {
                 if (!(/\/|_linklist|sys/).test(key)) {
-                    options.blacklistDict[key] = options.blacklistDict[key] || require(key);
+                    options.blacklistDict[key] = options.blacklistDict[key] ||
+                        options.require(key);
                 }
             });
             // init circularList - blacklistDict
@@ -731,13 +664,16 @@ local.templateApidocMd = '\
             local.apidocModuleDictAdd(options, options.moduleDict);
             // init moduleExtraDict
             local.fs.readdirSync(options.dir).sort().forEach(function (file) {
+                if ((/^(?:\.git|node_modules|tmp)$/).test(file)) {
+                    return;
+                }
                 try {
-                    local.fs.readdirSync(options.dir + '/' + file).sort().forEach(function (
-                        file2
-                    ) {
-                        file2 = file + '/' + file2;
-                        options.libFileList.push(file2);
-                    });
+                    local.fs.readdirSync(options.dir + '/' + file)
+                        .sort()
+                        .forEach(function (file2) {
+                            file2 = file + '/' + file2;
+                            options.libFileList.push(file2);
+                        });
                 } catch (errorCaught) {
                     options.libFileList.push(file);
                 }
@@ -751,15 +687,18 @@ local.templateApidocMd = '\
                         .replace('lib.', '')
                         .replace((/\.[^.]*?$/), '')
                         .replace((/\W/g), '_');
+                    if (!tmp.name) {
+                        return;
+                    }
                     [
                         tmp.name,
-                        tmp.name[0].toUpperCase() + tmp.name.slice(1)
+                        tmp.name.slice(0, 1).toUpperCase() + tmp.name.slice(1)
                     ].some(function (name) {
                         tmp.skip = local.path.extname(file) !== '.js' ||
                             file.indexOf(options.packageJson.main) >= 0 ||
                             new RegExp('(?:\\b|_)(?:archive|artifact|asset|' +
                                 'bin|bower_components|build|' +
-                                'cli|coverage' +
+                                'cli|coverage|' +
                                 'doc|dist|' +
                                 'example|external|' +
                                 'fixture|' +
@@ -776,18 +715,20 @@ local.templateApidocMd = '\
                     if (tmp.skip) {
                         return;
                     }
-                    tmp.module = require(options.dir + '/' + file);
+                    tmp.module = options.require(options.dir + '/' + file);
                     if (options.circularList.indexOf(tmp.module) >= 0) {
                         return;
                     }
                     module[tmp.name] = tmp.module;
                     // update exampleList
                     options.exampleList.push(readExample(file));
-                } catch (ignore) {
+                    console.error('apidocCreate - ' + options.exampleList.length +
+                        '. added libFile ' + file);
+                } catch (errorCaught) {
+                    console.error(errorCaught);
                 }
-                return options.exampleList.length <= 20;
+                return options.exampleList.length >= 256;
             });
-            options.exampleList = options.exampleList.slice(0, 20);
             local.apidocModuleDictAdd(options, options.moduleExtraDict);
             Object.keys(options.moduleDict).forEach(function (key) {
                 if (key.indexOf(options.env.npm_package_name + '.') !== 0) {
@@ -803,8 +744,11 @@ local.templateApidocMd = '\
                     module = options.moduleDict[prefix];
                     // handle case where module is a function
                     if (typeof module === 'function') {
-                        module[prefix.split('.').slice(-1)[0]] =
-                            module[prefix.split('.').slice(-1)[0]] || module;
+                        try {
+                            module[prefix.split('.').slice(-1)[0]] =
+                                module[prefix.split('.').slice(-1)[0]] || module;
+                        } catch (ignore) {
+                        }
                     }
                     return {
                         elementList: Object.keys(module)
@@ -847,11 +791,11 @@ local.templateApidocMd = '\
                         return;
                     }
                     Object.keys(moduleDict[prefix]).forEach(function (key) {
-                        if (!(/^\w[\w\-.]*?$/).test(key)) {
-                            return;
-                        }
-                        // bug-workaround - buggy electron accessors
+                        // bug-workaround - buggy electron getter / setter
                         try {
+                            if (!(/^\w[\w\-.]*?$/).test(key) || !moduleDict[prefix][key]) {
+                                return;
+                            }
                             tmp = element === 'prototype'
                                 ? {
                                     module: moduleDict[prefix][key].prototype,
@@ -873,6 +817,7 @@ local.templateApidocMd = '\
                                 tmp.module.prototype
                             ].some(function (dict) {
                                 return Object.keys(dict || {}).some(function (key) {
+                                    // bug-workaround - buggy electron getter / setter
                                     try {
                                         return typeof dict[key] === 'function';
                                     } catch (ignore) {
@@ -908,10 +853,7 @@ local.templateApidocMd = '\
         // jslint files
         process.stdout.write(local.apidocCreate({
             dir: process.argv[2],
-            modulePathList: module.paths,
-            template: process.argv[3] === '--markdown'
-                ? local.templateApidocMd
-                : local.templateApidocHtml
+            modulePathList: module.paths
         }));
         break;
     }
@@ -1079,6 +1021,22 @@ local.templateApidocMd = '\
                 : element, replacer, space);
         };
 
+        local.listShuffle = function (list) {
+        /*
+         * https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle
+         * this function will inplace shuffle the list, via fisher-yates algorithm
+         */
+            var ii, random, swap;
+            for (ii = list.length - 1; ii > 0; ii -= 1) {
+                // coerce to finite integer
+                random = (Math.random() * (ii + 1)) | 0;
+                swap = list[ii];
+                list[ii] = list[random];
+                list[random] = swap;
+            }
+            return list;
+        };
+
         local.nop = function () {
         /*
          * this function will do nothing
@@ -1211,7 +1169,7 @@ local.templateApidocMd = '\
 
         local.setTimeoutOnError = function (onError, error, data) {
         /*
-         * this function will asynchronously call onError
+         * this function will async-call onError
          */
             if (typeof onError === 'function') {
                 setTimeout(function () {
@@ -1565,7 +1523,13 @@ local.templateApidocMd = '\
             }
         };
 
-        local._DbTable.prototype._crudGetManyByQuery = function (query, sort, skip, limit) {
+        local._DbTable.prototype._crudGetManyByQuery = function (
+            query,
+            sort,
+            skip,
+            limit,
+            shuffle
+        ) {
         /*
          * this function will get the dbRow's in the dbTable,
          * with the given query, sort, skip, and limit
@@ -1603,8 +1567,12 @@ local.templateApidocMd = '\
                     });
                 }
             });
-            // skip and limit
-            result = result.slice(skip || 0, (skip || 0) + (limit || Infinity));
+            // skip
+            result = result.slice(skip || 0);
+            // shuffle
+            ((shuffle && local.listShuffle) || local.nop)(result);
+            // limit
+            result = result.slice(0, limit || Infinity);
             return result;
         };
 
@@ -1787,7 +1755,8 @@ local.templateApidocMd = '\
                     options.query,
                     options.sort || this.sortDefault,
                     options.skip,
-                    options.limit
+                    options.limit,
+                    options.shuffle
                 ),
                 options.fieldList
             ));
@@ -2182,7 +2151,7 @@ local.templateApidocMd = '\
                 : value;
         };
 
-        local.dbRowListGetManyByOperator = function (dbRowList, fieldName, operator, bb) {
+        local.dbRowListGetManyByOperator = function (dbRowList, fieldName, operator, bb, not) {
         /*
          * this function will get the dbRow's in dbRowList with the given operator
          */
@@ -2289,7 +2258,7 @@ local.templateApidocMd = '\
                 }
                 // optimization - for-loop
                 for (jj = fieldValue.length - 1; jj >= 0; jj -= 1) {
-                    if (test(fieldValue[jj], bb, typeof fieldValue[jj], typeof2)) {
+                    if (not ^ test(fieldValue[jj], bb, typeof fieldValue[jj], typeof2)) {
                         result.push(dbRowList[ii]);
                         break;
                     }
@@ -2298,19 +2267,29 @@ local.templateApidocMd = '\
             return result;
         };
 
-        local.dbRowListGetManyByQuery = function (dbRowList, query, fieldName) {
+        local.dbRowListGetManyByQuery = function (dbRowList, query, fieldName, not) {
         /*
          * this function will get the dbRow's in dbRowList with the given query
          */
             var bb, dbRowDict, result;
+            // optimization - convert to boolean
+            not = !!not;
             result = dbRowList;
             if (!(query && typeof query === 'object')) {
-                result = local.dbRowListGetManyByOperator(result, fieldName, '$eq', query);
+                result = local.dbRowListGetManyByOperator(result, fieldName, '$eq', query, not);
                 return result;
             }
             Object.keys(query).some(function (key) {
                 bb = query[key];
-                if (key === '$or' && Array.isArray(bb)) {
+                switch (key) {
+                case '$not':
+                    key = fieldName;
+                    not = !not;
+                    break;
+                case '$or':
+                    if (!Array.isArray(bb)) {
+                        break;
+                    }
                     dbRowDict = {};
                     bb.forEach(function (query) {
                         // recurse
@@ -2324,11 +2303,11 @@ local.templateApidocMd = '\
                     return !result.length;
                 }
                 if (key[0] === '$') {
-                    result = local.dbRowListGetManyByOperator(result, fieldName, key, bb);
+                    result = local.dbRowListGetManyByOperator(result, fieldName, key, bb, not);
                     return !result.length;
                 }
                 // recurse
-                result = local.dbRowListGetManyByQuery(result, bb, key);
+                result = local.dbRowListGetManyByQuery(result, bb, key, not);
                 return !result.length;
             });
             return result;
@@ -5611,8 +5590,10 @@ local.templateCoverageBadgeSvg =
                 local._moduleExtensionsJs = local.module._extensions['.js'];
                 local.module._extensions['.js'] = function (module, file) {
                     if (typeof file === 'string' &&
-                            file.indexOf(process.cwd()) === 0 &&
-                            file.indexOf(process.cwd() + '/node_modules/') !== 0) {
+                            (file.indexOf(process.env.npm_config_mode_coverage_dir) === 0 || (
+                                file.indexOf(process.cwd()) === 0 &&
+                                file.indexOf(process.cwd() + '/node_modules/') !== 0
+                            ))) {
                         module._compile(local.instrumentInPackage(
                             local._fs.readFileSync(file, 'utf8'),
                             file
@@ -9871,14 +9852,15 @@ local.assetsDict['/assets.index.template.html'].replace((/\n/g), '\\n\\\n') +
         local.assetsDict[\'/assets.example.js\'] =\n\
             local.assetsDict[\'/assets.example.js\'] ||\n\
             local.fs.readFileSync(__filename, \'utf8\');\n\
+        // bug-workaround - long $npm_package_buildCustomOrg\n\
+        /* jslint-ignore-begin */\n\
         local.assetsDict[\'/assets.jslint.rollup.js\'] =\n\
             local.assetsDict[\'/assets.jslint.rollup.js\'] ||\n\
             local.fs.readFileSync(\n\
-                // buildCustomOrg-hack\n\
-                local.jslint.__dirname +\n\
-                    \'/lib.jslint.js\',\n\
+                local.jslint.__dirname + \'/lib.jslint.js\',\n\
                 \'utf8\'\n\
             ).replace((/^#!/), \'//\');\n\
+        /* jslint-ignore-end */\n\
         local.assetsDict[\'/favicon.ico\'] = local.assetsDict[\'/favicon.ico\'] || \'\';\n\
         // if $npm_config_timeout_exit exists,\n\
         // then exit this process after $npm_config_timeout_exit ms\n\
@@ -9995,12 +9977,12 @@ the greatest app in the world!\n\
 #### apidoc\n\
 - [https://kaizhu256.github.io/node-jslint-lite/build..beta..travis-ci.org/apidoc.html](https://kaizhu256.github.io/node-jslint-lite/build..beta..travis-ci.org/apidoc.html)\n\
 \n\
-[![apidoc](https://kaizhu256.github.io/node-jslint-lite/build/screenCapture.buildCi.browser.apidoc.html.png)](https://kaizhu256.github.io/node-jslint-lite/build..beta..travis-ci.org/apidoc.html)\n\
+[![apidoc](https://kaizhu256.github.io/node-jslint-lite/build/screenCapture.buildCi.browser.%252Ftmp%252Fbuild%252Fapidoc.html.png)](https://kaizhu256.github.io/node-jslint-lite/build..beta..travis-ci.org/apidoc.html)\n\
 \n\
 #### todo\n\
 - none\n\
 \n\
-#### changes for v0.0.1\n\
+#### changelog for v0.0.1\n\
 - none\n\
 \n\
 #### this package requires\n\
@@ -10077,10 +10059,10 @@ the greatest app in the world!\n\
     "scripts": {\n\
         "build-ci": "utility2 shReadmeTest build_ci.sh",\n\
         "env": "env",\n\
-        "heroku-postbuild": "(set -e; npm install \\\"kaizhu256/node-utility2#alpha\\\"; utility2 shDeployHeroku)",\n\
-        "postinstall": "if [ -f npm_scripts.sh ]; then ./npm_scripts.sh postinstall; fi",\n\
-        "start": "(set -e; export PORT=${PORT:-8080}; utility2 start test.js)",\n\
-        "test": "(set -e; export PORT=$(utility2 shServerPortRandom); utility2 test test.js)"\n\
+        "heroku-postbuild": "npm install \\\"kaizhu256/node-utility2#alpha\\\" && utility2 shDeployHeroku",\n\
+        "postinstall": "[ ! -f npm_scripts.sh ] || ./npm_scripts.sh postinstall",\n\
+        "start": "PORT=${PORT:-8080} utility2 start test.js",\n\
+        "test": "PORT=$(utility2 shServerPortRandom) utility2 test test.js"\n\
     },\n\
     "version": "0.0.1"\n\
 }\n\
@@ -10126,7 +10108,10 @@ shBuildCi\n\
 
 
 local.assetsDict['/assets.readmeCustomOrg.npmdoc.template.md'] = '\
-# api documentation for \
+# npmdoc-{{env.npm_package_name}} \
+\n\
+\n\
+#### api documentation for \
 {{#if env.npm_package_homepage}} \
 [{{env.npm_package_name}} (v{{env.npm_package_version}})]({{env.npm_package_homepage}}) \
 {{#unless env.npm_package_homepage}} \
@@ -10135,13 +10120,17 @@ local.assetsDict['/assets.readmeCustomOrg.npmdoc.template.md'] = '\
 [![npm package](https://img.shields.io/npm/v/npmdoc-{{env.npm_package_name}}.svg?style=flat-square)](https://www.npmjs.org/package/npmdoc-{{env.npm_package_name}}) \
 [![travis-ci.org build-status](https://api.travis-ci.org/npmdoc/node-npmdoc-{{env.npm_package_name}}.svg)](https://travis-ci.org/npmdoc/node-npmdoc-{{env.npm_package_name}}) \
 \n\
+\n\
 #### {{env.npm_package_description}} \
 \n\
 \n\
 [![NPM](https://nodei.co/npm/{{env.npm_package_name}}.png?downloads=true&downloadRank=true&stars=true)](https://www.npmjs.com/package/{{env.npm_package_name}}) \
 \n\
 \n\
-[![apidoc](https://npmdoc.github.io/node-npmdoc-{{env.npm_package_name}}/build/screenCapture.buildCi.browser.apidoc.html.png)](https://npmdoc.github.io/node-npmdoc-{{env.npm_package_name}}/build/apidoc.html) \
+- [https://npmdoc.github.io/node-npmdoc-{{env.npm_package_name}}/build/apidoc.html](https://npmdoc.github.io/node-npmdoc-{{env.npm_package_name}}/build/apidoc.html) \
+\n\
+\n\
+[![apidoc](https://npmdoc.github.io/node-npmdoc-{{env.npm_package_name}}/build/screenCapture.buildCi.browser.%252Ftmp%252Fbuild%252Fapidoc.html.png)](https://npmdoc.github.io/node-npmdoc-{{env.npm_package_name}}/build/apidoc.html) \
 \n\
 \n\
 ![npmPackageListing](https://npmdoc.github.io/node-npmdoc-{{env.npm_package_name}}/build/screenCapture.npmPackageListing.svg) \
@@ -10162,12 +10151,20 @@ local.assetsDict['/assets.readmeCustomOrg.npmdoc.template.md'] = '\
 \n\
 ``` \
 \n\
+\n\
+\n\
+\n\
+# misc\n\
+- this document was created with [utility2](https://github.com/kaizhu256/node-utility2)\n\
 ';
 
 
 
 local.assetsDict['/assets.readmeCustomOrg.npmtest.template.md'] = '\
-# test coverage for \
+# npmtest-{{env.npm_package_name}} \
+\n\
+\n\
+#### test coverage for \
 {{#if env.npm_package_homepage}} \
 [{{env.npm_package_name}} (v{{env.npm_package_version}})]({{env.npm_package_homepage}}) \
 {{#unless env.npm_package_homepage}} \
@@ -10175,6 +10172,7 @@ local.assetsDict['/assets.readmeCustomOrg.npmtest.template.md'] = '\
 {{/if env.npm_package_homepage}} \
 [![npm package](https://img.shields.io/npm/v/npmtest-{{env.npm_package_name}}.svg?style=flat-square)](https://www.npmjs.org/package/npmtest-{{env.npm_package_name}}) \
 [![travis-ci.org build-status](https://api.travis-ci.org/npmtest/node-npmtest-{{env.npm_package_name}}.svg)](https://travis-ci.org/npmtest/node-npmtest-{{env.npm_package_name}}) \
+\n\
 \n\
 #### {{env.npm_package_description}} \
 \n\
@@ -10192,13 +10190,22 @@ local.assetsDict['/assets.readmeCustomOrg.npmtest.template.md'] = '\
 | build-artifacts : | [![build-artifacts](https://npmtest.github.io/node-npmtest-{{env.npm_package_name}}/glyphicons_144_folder_open.png)](https://github.com/npmtest/node-npmtest-{{env.npm_package_name}}/tree/gh-pages/build)| \
 \n\
 \n\
-[![istanbul-coverage](https://npmtest.github.io/node-npmtest-{{env.npm_package_name}}/build/screenCapture.buildCi.browser.coverage.example.html.png)](https://npmtest.github.io/node-npmtest-{{env.npm_package_name}}/build/coverage.html/index.html) \
+- [https://npmtest.github.io/node-npmtest-{{env.npm_package_name}}/build/coverage.html/index.html](https://npmtest.github.io/node-npmtest-{{env.npm_package_name}}/build/coverage.html/index.html) \
 \n\
 \n\
-[![test-report](https://npmtest.github.io/node-npmtest-{{env.npm_package_name}}/build/screenCapture.buildCi.browser.test-report.html.png)](https://npmtest.github.io/node-npmtest-{{env.npm_package_name}}/build/test-report.html) \
+[![istanbul-coverage](https://npmtest.github.io/node-npmtest-{{env.npm_package_name}}/build/screenCapture.buildCi.browser.%252Ftmp%252Fbuild%252Fcoverage.lib.html.png)](https://npmtest.github.io/node-npmtest-{{env.npm_package_name}}/build/coverage.html/index.html) \
 \n\
 \n\
-[![apidoc](https://npmdoc.github.io/node-npmdoc-{{env.npm_package_name}}/build/screenCapture.buildCi.browser.apidoc.html.png)](https://npmdoc.github.io/node-npmdoc-{{env.npm_package_name}}/build/apidoc.html) \
+- [https://npmtest.github.io/node-npmtest-{{env.npm_package_name}}/build/test-report.html](https://npmtest.github.io/node-npmtest-{{env.npm_package_name}}/build/test-report.html) \
+\n\
+\n\
+[![test-report](https://npmtest.github.io/node-npmtest-{{env.npm_package_name}}/build/screenCapture.buildCi.browser.%252Ftmp%252Fbuild%252Ftest-report.html.png)](https://npmtest.github.io/node-npmtest-{{env.npm_package_name}}/build/test-report.html) \
+\n\
+\n\
+- [https://npmdoc.github.io/node-npmdoc-{{env.npm_package_name}}/build/apidoc.html](https://npmdoc.github.io/node-npmdoc-{{env.npm_package_name}}/build/apidoc.html) \
+\n\
+\n\
+[![apidoc](https://npmdoc.github.io/node-npmdoc-{{env.npm_package_name}}/build/screenCapture.buildCi.browser.%252Ftmp%252Fbuild%252Fapidoc.html.png)](https://npmdoc.github.io/node-npmdoc-{{env.npm_package_name}}/build/apidoc.html) \
 \n\
 \n\
 ![npmPackageListing](https://npmtest.github.io/node-npmtest-{{env.npm_package_name}}/build/screenCapture.npmPackageListing.svg) \
@@ -10319,6 +10326,16 @@ local.assetsDict['/assets.test.template.js'] = '\
 \n\
     // run browser js\-env code - post-init\n\
     case \'browser\':\n\
+        local.testCase_browser_nullCase = local.testCase_browser_nullCase || function (\n\
+            options,\n\
+            onError\n\
+        ) {\n\
+        /*\n\
+         * this function will test browsers\'s null-case handling-behavior-behavior\n\
+         */\n\
+            onError(null, options);\n\
+        };\n\
+\n\
         // run tests\n\
         local.nop(local.modeTest &&\n\
             document.querySelector(\'#testRunButton1\') &&\n\
@@ -11622,6 +11639,9 @@ local.assetsDict['/favicon.ico'] = '';
                     }
                     options.urlParsed = local.urlParse(options.url);
                     options.testName = options.urlParsed.pathname;
+                    if (options.testName.indexOf(process.cwd()) === 0) {
+                        options.testName = options.testName.replace(process.cwd(), '');
+                    }
                     if (local.env.npm_config_modeBrowserTestHostInclude) {
                         options.testName = options.urlParsed.host + options.testName;
                     }
@@ -11688,7 +11708,6 @@ local.assetsDict['/favicon.ico'] = '';
                     local.processSpawnWithTimeout('electron', [
                         __filename,
                         'browserTest',
-                        '--disable-overlay-scrollbar',
                         '--enable-logging'
                     ], {
                         env: options,
@@ -11735,10 +11754,10 @@ local.assetsDict['/favicon.ico'] = '';
                         onNext(local._debugTryCatchErrorCaught);
                         return;
                     }
-                    console.error('\nbrowserTest - merging test-report from ' +
-                        options.fileTestReport + '\n');
                     if (!options.modeTestIgnore) {
                         local.testReportMerge(local.testReport, data);
+                        console.error('\nbrowserTest - merged test-report from file://' +
+                            options.fileTestReport + '\n');
                     }
                     // create test-report.json
                     local.fs.writeFileSync(
@@ -12139,7 +12158,7 @@ return Utf8ArrayToStr(bff);
                 // try to recover from error
                 setTimeout(onError, error && local.timeoutDefault);
             };
-            // try to salvage uncaughtException
+            // try to recover from uncaughtException
             process.on('uncaughtException', onError2);
             onParallel = local.utility2.onParallel(onError2);
             onParallel.counter += 1;
@@ -12165,34 +12184,26 @@ return Utf8ArrayToStr(bff);
                     modeForce: true,
                     modulePathList: options.modulePathList
                 }, onParallel);
-                // build README.md
-                options.readme = local.apidocCreate({
-                    dir: local.env.npm_package_buildCustomOrg,
-                    header: local.assetsDict['/assets.readmeCustomOrg.npmdoc.template.md'],
-                    modulePathList: options.modulePathList,
-                    template: local.apidoc.templateApidocMd
-                });
-                local.fs.writeFileSync('README.md', options.readme);
                 break;
             case 'npmtest':
                 // update package.json
                 local.objectSetOverride(options.packageJson, local.objectLiteralize({
                     keywords: ['coverage', 'test', local.env.npm_package_buildCustomOrg]
                 }), 2);
-                // build README.md
-                options.readme = local.apidocCreate({
-                    dir: local.env.npm_package_buildCustomOrg,
-                    modeRenderFast: true,
-                    modulePathList: options.modulePathList,
-                    template: local.assetsDict['/assets.readmeCustomOrg.npmtest.template.md']
-                });
-                local.fs.writeFileSync('README.md', options.readme);
                 break;
             }
+            // build README.md
+            options.readme = local.apidocCreate({
+                dir: local.env.npm_package_buildCustomOrg,
+                modeNoApidoc: true,
+                modulePathList: options.modulePathList,
+                template: local.assetsDict['/assets.readmeCustomOrg.' + local.env.GITHUB_ORG +
+                    '.template.md']
+            });
+            local.fs.writeFileSync('README.md', options.readme);
+            console.error('created customOrg file://' + process.cwd() + '/README.md\n');
             // re-build package.json
-            options.packageJson.description = (/\w.*/).exec(options.readme)[0]
-                .replace((/ {2,}/g), ' ')
-                .trim();
+            options.packageJson.description = options.readme.split('\n')[2].trim();
             local.fs.writeFileSync(
                 'package.json',
                 local.jsonStringifyOrdered(options.packageJson, null, 4) + '\n'
@@ -12432,7 +12443,7 @@ return Utf8ArrayToStr(bff);
                 sortDefault: [{
                     fieldName: '_id'
                 }, {
-                    fieldName: 'buildFinishedAt'
+                    fieldName: 'buildStartedAt'
                 }, {
                     fieldName: 'buildState'
                 }, {
@@ -12447,7 +12458,7 @@ return Utf8ArrayToStr(bff);
         /*
          * this function will update dbTableTravisOrg with active, public repos
          */
-            var dbRowList, self;
+            var count, dbRowList, self;
             options = local.objectSetDefault(options, { githubOrg: local.env.GITHUB_ORG });
             local.onNext(options, function (error, data) {
                 switch (options.modeNext) {
@@ -12468,8 +12479,8 @@ return Utf8ArrayToStr(bff);
                     local.ajax(data, options.onNext);
                     break;
                 case 3:
-                    console.error('... fetched ' + data.url);
-                    data = JSON.parse(data.responseText)['@pagination'].count;
+                    count = JSON.parse(data.responseText)['@pagination'].count;
+                    console.error('... fetched ' + data.url + ' with ' + count + ' repos');
                     dbRowList = [];
                     local.onParallelList({
                         list: [{
@@ -12488,19 +12499,28 @@ return Utf8ArrayToStr(bff);
                             offset: 400,
                             sort_by: 'asc'
                         }, {
-                            offset: data - 500,
+                            offset: Math.floor(Math.random() * count) - 100,
+                            sort_by: 'asc'
+                        }, {
+                            offset: Math.floor(Math.random() * count) - 100,
+                            sort_by: 'asc'
+                        }, {
+                            offset: 0,
                             sort_by: 'desc'
                         }, {
-                            offset: data - 400,
+                            offset: count - 500,
                             sort_by: 'desc'
                         }, {
-                            offset: data - 300,
+                            offset: count - 400,
                             sort_by: 'desc'
                         }, {
-                            offset: data - 200,
+                            offset: count - 300,
                             sort_by: 'desc'
                         }, {
-                            offset: data - 100,
+                            offset: count - 200,
+                            sort_by: 'desc'
+                        }, {
+                            offset: count - 100,
                             sort_by: 'desc'
                         }]
                     }, function (options2, onParallel) {
@@ -12528,6 +12548,7 @@ return Utf8ArrayToStr(bff);
                     }, options.onNext);
                     break;
                 case 4:
+                    self.crudRemoveManyByQuery({});
                     self.crudSetManyById(dbRowList
                         .filter(function (dbRow) {
                             return dbRow.private === false && dbRow.slug.indexOf(
@@ -12539,10 +12560,13 @@ return Utf8ArrayToStr(bff);
                             return {
                                 _id: dbRow.name.replace('node-' + options.githubOrg + '-', ''),
                                 active: dbRow.active,
+                                buildDuration: data.duration,
                                 buildFinishedAt: data.finished_at,
+                                buildStartedAt: data.started_at,
                                 buildState: data.state
                             };
-                        }), options.onNext);
+                        }));
+                    self.save(options.onNext);
                     break;
                 default:
                     local.setTimeoutOnError(onError, error, self);
@@ -12609,6 +12633,7 @@ return Utf8ArrayToStr(bff);
         /*
          * this function will exit the current process with the given exitCode
          */
+            local.onErrorDefault(typeof exitCode !== 'number' && exitCode);
             exitCode = !exitCode || Number(exitCode) === 0
                 ? 0
                 : Number(exitCode) || 1;
@@ -12659,7 +12684,7 @@ return Utf8ArrayToStr(bff);
         /*
          * this function will request the data from options.url
          */
-            var chunkList, onError2, timerTimeout, done, request, response, urlParsed;
+            var chunkList, done, onError2, timerTimeout, request, response, urlParsed;
             // init onError2
             onError2 = function (error) {
                 if (done) {
@@ -13312,10 +13337,7 @@ return Utf8ArrayToStr(bff);
             ].some(function (modulePathList) {
                 modulePathList.some(function (modulePath) {
                     try {
-                        tmp = require('path').resolve(
-                            process.cwd(),
-                            modulePath + '/' + module
-                        );
+                        tmp = require('path').resolve(process.cwd(), modulePath + '/' + module);
                         result = require('fs').statSync(tmp).isDirectory() && tmp;
                         return result;
                     } catch (ignore) {
@@ -14910,12 +14932,6 @@ instruction\n\
                 // mock proces.exit
                 exit = process.exit;
                 process.exit = local.nop;
-                /* istanbul ignore next */
-                if (local.env.npm_package_buildCustomOrg &&
-                        local.fs.existsSync(local.env.npm_package_buildCustomOrg)) {
-                    local.exportsCustomOrg =
-                        require(process.cwd() + '/' + local.env.npm_package_buildCustomOrg);
-                }
                 break;
             }
             // init modeTestCase
@@ -15103,6 +15119,13 @@ instruction\n\
             // 3. run tests
             local.testRunDefault(options);
             local.onReadyBefore();
+        };
+
+        local.throwError = function () {
+        /*
+         * this function will throw an error
+         */
+            throw new Error();
         };
 
         local.timeElapsedPoll = function (options) {
@@ -15310,6 +15333,20 @@ instruction\n\
         local.istanbulInstrumentInPackage = local.istanbul.instrumentInPackage || local.echo;
         local.istanbulInstrumentSync = local.istanbul.instrumentSync || local.echo;
         local.jslintAndPrint = local.jslint.jslintAndPrint || local.echo;
+        local.objectWeird = function () {
+            return;
+        };
+        // coverage-hack
+        local.tryCatchOnError(function () {
+            local.objectWeird();
+        }, local.nop);
+        // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Working_with_Objects
+        // #Defining_getters_and_setters
+        Object.defineProperty(local.objectWeird, 'error', {
+            get: local.throwError,
+            set: local.throwError
+        });
+        local.objectWeird.toString = local.throwError;
         local.regexpEmailValidate = new RegExp(
             '^[a-zA-Z0-9.!#$%&\'*+\\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}' +
                 '[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$'
@@ -15506,8 +15543,6 @@ instruction\n\
             local.assetsDict['/assets.utility2.rollup.js'];
         // merge previous test-report
         if (local.env.npm_config_file_test_report_merge) {
-            console.error('merging file://' + local.env.npm_config_file_test_report_merge +
-                ' to test-report');
             local.testReportMerge(
                 local.testReport,
                 JSON.parse(local.tryCatchReadFile(
@@ -15515,6 +15550,8 @@ instruction\n\
                     'utf8'
                 ) || '{}')
             );
+            console.error('\n' + local.env.MODE_BUILD + ' - merged test-report from file://' +
+                local.env.npm_config_file_test_report_merge);
         }
         break;
     }
@@ -15545,6 +15582,18 @@ instruction\n\
             return;
         case 'browserTest':
             local.browserTest({}, local.exit);
+            return;
+        case 'browserTestList':
+            local.onParallelList({
+                list: process.argv[3].split(/\s+/).filter(function (element) {
+                    return element;
+                })
+            }, function (options, onParallel) {
+                onParallel.counter += 1;
+                local.browserTest({ url: options.element }, function () {
+                    onParallel();
+                });
+            }, local.exit);
             return;
         case 'dbTableTravisOrgCrudGetManyByQuery':
             local.dbTableTravisOrgCreate(JSON.parse(process.argv[3]), function (error, data) {
@@ -15581,7 +15630,7 @@ instruction\n\
                         ' of ' + options.list.length + '] exitCode ' + exitCode);
                     onParallel(exitCode && new Error(exitCode), options);
                 });
-            }, local.onErrorThrow);
+            }, local.exit);
             return;
         }
         // init lib
@@ -19886,7 +19935,7 @@ local.templateUiResponseAjax = '\
         global.utility2_rollup;
     local.local = local;
 /* jslint-ignore-begin */
-local._stateInit({"utility2":{"assetsDict":{"/assets.index.template.html":"<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>{{env.npm_package_name}} (v{{env.npm_package_version}})</title>\n<style>\n/*csslint\n    box-sizing: false,\n    universal-selector: false\n*/\n* {\n    box-sizing: border-box;\n}\nbody {\n    background: #dde;\n    font-family: Arial, Helvetica, sans-serif;\n    margin: 2rem;\n}\nbody > * {\n    margin-bottom: 1rem;\n}\n.utility2FooterDiv {\n    margin-top: 20px;\n    text-align: center;\n}\n</style>\n<style>\n/*csslint\n*/\ntextarea {\n    font-family: monospace;\n    height: 10rem;\n    width: 100%;\n}\ntextarea[readonly] {\n    background: #ddd;\n}\n</style>\n</head>\n<body>\n<!-- utility2-comment\n<div id=\"ajaxProgressDiv1\" style=\"background: #d00; height: 2px; left: 0; margin: 0; padding: 0; position: fixed; top: 0; transition: background 0.5s, width 1.5s; width: 25%;\"></div>\nutility2-comment -->\n<h1>\n<!-- utility2-comment\n    <a\n        {{#if env.npm_package_homepage}}\n        href=\"{{env.npm_package_homepage}}\"\n        {{/if env.npm_package_homepage}}\n        target=\"_blank\"\n    >\nutility2-comment -->\n        {{env.npm_package_name}} (v{{env.npm_package_version}})\n<!-- utility2-comment\n    </a>\nutility2-comment -->\n</h1>\n<h3>{{env.npm_package_description}}</h3>\n<!-- utility2-comment\n<h4><a download href=\"assets.app.js\">download standalone app</a></h4>\n<button class=\"onclick onreset\" id=\"testRunButton1\">run internal test</button><br>\n<div id=\"testReportDiv1\" style=\"display: none;\"></div>\nutility2-comment -->\n\n\n\n<label>stderr and stdout</label>\n<textarea class=\"resettable\" id=\"outputTextareaStdout1\" readonly></textarea>\n<!-- utility2-comment\n{{#if isRollup}}\n<script src=\"assets.app.js\"></script>\n{{#unless isRollup}}\nutility2-comment -->\n<script src=\"assets.utility2.rollup.js\"></script>\n<script src=\"jsonp.utility2._stateInit?callback=window.utility2._stateInit\"></script>\n<script src=\"assets.npmtest_gulp_load_plugins.rollup.js\"></script>\n<script src=\"assets.example.js\"></script>\n<script src=\"assets.test.js\"></script>\n<!-- utility2-comment\n{{/if isRollup}}\nutility2-comment -->\n<div class=\"utility2FooterDiv\">\n    [ this app was created with\n    <a href=\"https://github.com/kaizhu256/node-utility2\" target=\"_blank\">utility2</a>\n    ]\n</div>\n</body>\n</html>\n"},"env":{"NODE_ENV":"test","npm_package_description":"test coverage for [gulp-load-plugins (v1.5.0)](https://github.com/jackfranklin/gulp-load-plugins#readme) [![npm package](https://img.shields.io/npm/v/npmtest-gulp-load-plugins.svg?style=flat-square)](https://www.npmjs.org/package/npmtest-gulp-load-plugins) [![travis-ci.org build-status](https://api.travis-ci.org/npmtest/node-npmtest-gulp-load-plugins.svg)](https://travis-ci.org/npmtest/node-npmtest-gulp-load-plugins)","npm_package_homepage":"https://github.com/npmtest/node-npmtest-gulp-load-plugins","npm_package_name":"npmtest-gulp-load-plugins","npm_package_nameAlias":"npmtest_gulp_load_plugins","npm_package_version":"0.0.2"}}});
+local._stateInit({"utility2":{"assetsDict":{"/assets.index.template.html":"<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>{{env.npm_package_name}} (v{{env.npm_package_version}})</title>\n<style>\n/*csslint\n    box-sizing: false,\n    universal-selector: false\n*/\n* {\n    box-sizing: border-box;\n}\nbody {\n    background: #dde;\n    font-family: Arial, Helvetica, sans-serif;\n    margin: 2rem;\n}\nbody > * {\n    margin-bottom: 1rem;\n}\n.utility2FooterDiv {\n    margin-top: 20px;\n    text-align: center;\n}\n</style>\n<style>\n/*csslint\n*/\ntextarea {\n    font-family: monospace;\n    height: 10rem;\n    width: 100%;\n}\ntextarea[readonly] {\n    background: #ddd;\n}\n</style>\n</head>\n<body>\n<!-- utility2-comment\n<div id=\"ajaxProgressDiv1\" style=\"background: #d00; height: 2px; left: 0; margin: 0; padding: 0; position: fixed; top: 0; transition: background 0.5s, width 1.5s; width: 25%;\"></div>\nutility2-comment -->\n<h1>\n<!-- utility2-comment\n    <a\n        {{#if env.npm_package_homepage}}\n        href=\"{{env.npm_package_homepage}}\"\n        {{/if env.npm_package_homepage}}\n        target=\"_blank\"\n    >\nutility2-comment -->\n        {{env.npm_package_name}} (v{{env.npm_package_version}})\n<!-- utility2-comment\n    </a>\nutility2-comment -->\n</h1>\n<h3>{{env.npm_package_description}}</h3>\n<!-- utility2-comment\n<h4><a download href=\"assets.app.js\">download standalone app</a></h4>\n<button class=\"onclick onreset\" id=\"testRunButton1\">run internal test</button><br>\n<div id=\"testReportDiv1\" style=\"display: none;\"></div>\nutility2-comment -->\n\n\n\n<label>stderr and stdout</label>\n<textarea class=\"resettable\" id=\"outputTextareaStdout1\" readonly></textarea>\n<!-- utility2-comment\n{{#if isRollup}}\n<script src=\"assets.app.js\"></script>\n{{#unless isRollup}}\nutility2-comment -->\n<script src=\"assets.utility2.rollup.js\"></script>\n<script src=\"jsonp.utility2._stateInit?callback=window.utility2._stateInit\"></script>\n<script src=\"assets.npmtest_gulp_load_plugins.rollup.js\"></script>\n<script src=\"assets.example.js\"></script>\n<script src=\"assets.test.js\"></script>\n<!-- utility2-comment\n{{/if isRollup}}\nutility2-comment -->\n<div class=\"utility2FooterDiv\">\n    [ this app was created with\n    <a href=\"https://github.com/kaizhu256/node-utility2\" target=\"_blank\">utility2</a>\n    ]\n</div>\n</body>\n</html>\n"},"env":{"NODE_ENV":"test","npm_package_description":"#### test coverage for [gulp-load-plugins (v1.5.0)](https://github.com/jackfranklin/gulp-load-plugins#readme) [![npm package](https://img.shields.io/npm/v/npmtest-gulp-load-plugins.svg?style=flat-square)](https://www.npmjs.org/package/npmtest-gulp-load-plugins) [![travis-ci.org build-status](https://api.travis-ci.org/npmtest/node-npmtest-gulp-load-plugins.svg)](https://travis-ci.org/npmtest/node-npmtest-gulp-load-plugins)","npm_package_homepage":"https://github.com/npmtest/node-npmtest-gulp-load-plugins","npm_package_name":"npmtest-gulp-load-plugins","npm_package_nameAlias":"npmtest_gulp_load_plugins","npm_package_version":"0.0.1"}}});
 /* jslint-ignore-end */
 }());
 /* script-end local._stateInit */
@@ -19894,40 +19943,40 @@ local._stateInit({"utility2":{"assetsDict":{"/assets.index.template.html":"<!doc
 
 
 /* script-begin /assets.lib.js */
-var __cov_ae0478febaa76 = (Function('return this'))();
-if (!__cov_ae0478febaa76.__coverage__) { __cov_ae0478febaa76.__coverage__ = {}; }
-__cov_ae0478febaa76 = __cov_ae0478febaa76.__coverage__;
-if (!(__cov_ae0478febaa76['/home/travis/build/npmtest/node-npmtest-gulp-load-plugins/lib.npmtest_gulp_load_plugins.js'])) {
-   __cov_ae0478febaa76['/home/travis/build/npmtest/node-npmtest-gulp-load-plugins/lib.npmtest_gulp_load_plugins.js'] = {"path":"/home/travis/build/npmtest/node-npmtest-gulp-load-plugins/lib.npmtest_gulp_load_plugins.js","s":{"1":0,"2":0,"3":0,"4":0,"5":0,"6":0,"7":0,"8":0,"9":0,"10":0,"11":0,"12":0,"13":0,"14":0,"15":0,"16":0},"b":{"1":[0,0,0,0],"2":[0,0,0,0],"3":[0,0],"4":[0,0],"5":[0,0]},"f":{"1":0,"2":0,"3":0},"fnMap":{"1":{"name":"(anonymous_1)","line":12,"loc":{"start":{"line":12,"column":1},"end":{"line":12,"column":13}}},"2":{"name":"(anonymous_2)","line":19,"loc":{"start":{"line":19,"column":5},"end":{"line":19,"column":17}}},"3":{"name":"(anonymous_3)","line":23,"loc":{"start":{"line":23,"column":24},"end":{"line":23,"column":36}}}},"statementMap":{"1":{"start":{"line":12,"column":0},"end":{"line":53,"column":5}},"2":{"start":{"line":14,"column":4},"end":{"line":14,"column":14}},"3":{"start":{"line":19,"column":4},"end":{"line":52,"column":9}},"4":{"start":{"line":21,"column":8},"end":{"line":21,"column":19}},"5":{"start":{"line":23,"column":8},"end":{"line":35,"column":13}},"6":{"start":{"line":24,"column":12},"end":{"line":34,"column":13}},"7":{"start":{"line":25,"column":16},"end":{"line":28,"column":30}},"8":{"start":{"line":30,"column":16},"end":{"line":33,"column":27}},"9":{"start":{"line":37,"column":8},"end":{"line":39,"column":21}},"10":{"start":{"line":41,"column":8},"end":{"line":41,"column":54}},"11":{"start":{"line":43,"column":8},"end":{"line":43,"column":62}},"12":{"start":{"line":45,"column":8},"end":{"line":51,"column":9}},"13":{"start":{"line":46,"column":12},"end":{"line":46,"column":68}},"14":{"start":{"line":48,"column":12},"end":{"line":48,"column":35}},"15":{"start":{"line":49,"column":12},"end":{"line":49,"column":49}},"16":{"start":{"line":50,"column":12},"end":{"line":50,"column":43}}},"branchMap":{"1":{"line":25,"type":"binary-expr","locations":[{"start":{"line":25,"column":23},"end":{"line":25,"column":62}},{"start":{"line":26,"column":20},"end":{"line":26,"column":70}},{"start":{"line":27,"column":20},"end":{"line":27,"column":71}},{"start":{"line":28,"column":20},"end":{"line":28,"column":29}}]},"2":{"line":30,"type":"binary-expr","locations":[{"start":{"line":30,"column":23},"end":{"line":30,"column":37}},{"start":{"line":31,"column":20},"end":{"line":31,"column":61}},{"start":{"line":32,"column":20},"end":{"line":32,"column":70}},{"start":{"line":33,"column":20},"end":{"line":33,"column":26}}]},"3":{"line":37,"type":"cond-expr","locations":[{"start":{"line":38,"column":14},"end":{"line":38,"column":20}},{"start":{"line":39,"column":14},"end":{"line":39,"column":20}}]},"4":{"line":41,"type":"binary-expr","locations":[{"start":{"line":41,"column":16},"end":{"line":41,"column":44}},{"start":{"line":41,"column":48},"end":{"line":41,"column":53}}]},"5":{"line":45,"type":"if","locations":[{"start":{"line":45,"column":8},"end":{"line":45,"column":8}},{"start":{"line":45,"column":8},"end":{"line":45,"column":8}}]}},"code":["/* istanbul instrument in package npmtest_gulp_load_plugins */","/*jslint","    bitwise: true,","    browser: true,","    maxerr: 8,","    maxlen: 96,","    node: true,","    nomen: true,","    regexp: true,","    stupid: true","*/","(function () {","    'use strict';","    var local;","","","","    // run shared js-env code - pre-init","    (function () {","        // init local","        local = {};","        // init modeJs","        local.modeJs = (function () {","            try {","                return typeof navigator.userAgent === 'string' &&","                    typeof document.querySelector('body') === 'object' &&","                    typeof XMLHttpRequest.prototype.open === 'function' &&","                    'browser';","            } catch (errorCaughtBrowser) {","                return module.exports &&","                    typeof process.versions.node === 'string' &&","                    typeof require('http').createServer === 'function' &&","                    'node';","            }","        }());","        // init global","        local.global = local.modeJs === 'browser'","            ? window","            : global;","        // init utility2_rollup","        local = local.global.utility2_rollup || local;","        // init lib","        local.local = local.npmtest_gulp_load_plugins = local;","        // init exports","        if (local.modeJs === 'browser') {","            local.global.utility2_npmtest_gulp_load_plugins = local;","        } else {","            module.exports = local;","            module.exports.__dirname = __dirname;","            module.exports.module = module;","        }","    }());","}());",""]};
+var __cov_6334600776cac = (Function('return this'))();
+if (!__cov_6334600776cac.__coverage__) { __cov_6334600776cac.__coverage__ = {}; }
+__cov_6334600776cac = __cov_6334600776cac.__coverage__;
+if (!(__cov_6334600776cac['/home/travis/build/npmtest/node-npmtest-gulp-load-plugins/lib.npmtest_gulp_load_plugins.js'])) {
+   __cov_6334600776cac['/home/travis/build/npmtest/node-npmtest-gulp-load-plugins/lib.npmtest_gulp_load_plugins.js'] = {"path":"/home/travis/build/npmtest/node-npmtest-gulp-load-plugins/lib.npmtest_gulp_load_plugins.js","s":{"1":0,"2":0,"3":0,"4":0,"5":0,"6":0,"7":0,"8":0,"9":0,"10":0,"11":0,"12":0,"13":0,"14":0,"15":0,"16":0},"b":{"1":[0,0,0,0],"2":[0,0,0,0],"3":[0,0],"4":[0,0],"5":[0,0]},"f":{"1":0,"2":0,"3":0},"fnMap":{"1":{"name":"(anonymous_1)","line":12,"loc":{"start":{"line":12,"column":1},"end":{"line":12,"column":13}}},"2":{"name":"(anonymous_2)","line":19,"loc":{"start":{"line":19,"column":5},"end":{"line":19,"column":17}}},"3":{"name":"(anonymous_3)","line":23,"loc":{"start":{"line":23,"column":24},"end":{"line":23,"column":36}}}},"statementMap":{"1":{"start":{"line":12,"column":0},"end":{"line":53,"column":5}},"2":{"start":{"line":14,"column":4},"end":{"line":14,"column":14}},"3":{"start":{"line":19,"column":4},"end":{"line":52,"column":9}},"4":{"start":{"line":21,"column":8},"end":{"line":21,"column":19}},"5":{"start":{"line":23,"column":8},"end":{"line":35,"column":13}},"6":{"start":{"line":24,"column":12},"end":{"line":34,"column":13}},"7":{"start":{"line":25,"column":16},"end":{"line":28,"column":30}},"8":{"start":{"line":30,"column":16},"end":{"line":33,"column":27}},"9":{"start":{"line":37,"column":8},"end":{"line":39,"column":21}},"10":{"start":{"line":41,"column":8},"end":{"line":41,"column":54}},"11":{"start":{"line":43,"column":8},"end":{"line":43,"column":62}},"12":{"start":{"line":45,"column":8},"end":{"line":51,"column":9}},"13":{"start":{"line":46,"column":12},"end":{"line":46,"column":68}},"14":{"start":{"line":48,"column":12},"end":{"line":48,"column":35}},"15":{"start":{"line":49,"column":12},"end":{"line":49,"column":49}},"16":{"start":{"line":50,"column":12},"end":{"line":50,"column":43}}},"branchMap":{"1":{"line":25,"type":"binary-expr","locations":[{"start":{"line":25,"column":23},"end":{"line":25,"column":62}},{"start":{"line":26,"column":20},"end":{"line":26,"column":70}},{"start":{"line":27,"column":20},"end":{"line":27,"column":71}},{"start":{"line":28,"column":20},"end":{"line":28,"column":29}}]},"2":{"line":30,"type":"binary-expr","locations":[{"start":{"line":30,"column":23},"end":{"line":30,"column":37}},{"start":{"line":31,"column":20},"end":{"line":31,"column":61}},{"start":{"line":32,"column":20},"end":{"line":32,"column":70}},{"start":{"line":33,"column":20},"end":{"line":33,"column":26}}]},"3":{"line":37,"type":"cond-expr","locations":[{"start":{"line":38,"column":14},"end":{"line":38,"column":20}},{"start":{"line":39,"column":14},"end":{"line":39,"column":20}}]},"4":{"line":41,"type":"binary-expr","locations":[{"start":{"line":41,"column":16},"end":{"line":41,"column":44}},{"start":{"line":41,"column":48},"end":{"line":41,"column":53}}]},"5":{"line":45,"type":"if","locations":[{"start":{"line":45,"column":8},"end":{"line":45,"column":8}},{"start":{"line":45,"column":8},"end":{"line":45,"column":8}}]}},"code":["/* istanbul instrument in package npmtest_gulp_load_plugins */","/*jslint","    bitwise: true,","    browser: true,","    maxerr: 8,","    maxlen: 96,","    node: true,","    nomen: true,","    regexp: true,","    stupid: true","*/","(function () {","    'use strict';","    var local;","","","","    // run shared js-env code - pre-init","    (function () {","        // init local","        local = {};","        // init modeJs","        local.modeJs = (function () {","            try {","                return typeof navigator.userAgent === 'string' &&","                    typeof document.querySelector('body') === 'object' &&","                    typeof XMLHttpRequest.prototype.open === 'function' &&","                    'browser';","            } catch (errorCaughtBrowser) {","                return module.exports &&","                    typeof process.versions.node === 'string' &&","                    typeof require('http').createServer === 'function' &&","                    'node';","            }","        }());","        // init global","        local.global = local.modeJs === 'browser'","            ? window","            : global;","        // init utility2_rollup","        local = local.global.utility2_rollup || local;","        // init lib","        local.local = local.npmtest_gulp_load_plugins = local;","        // init exports","        if (local.modeJs === 'browser') {","            local.global.utility2_npmtest_gulp_load_plugins = local;","        } else {","            module.exports = local;","            module.exports.__dirname = __dirname;","            module.exports.module = module;","        }","    }());","}());",""]};
 }
-__cov_ae0478febaa76 = __cov_ae0478febaa76['/home/travis/build/npmtest/node-npmtest-gulp-load-plugins/lib.npmtest_gulp_load_plugins.js'];
-__cov_ae0478febaa76.s['1']++;(function(){'use strict';__cov_ae0478febaa76.f['1']++;__cov_ae0478febaa76.s['2']++;var local;__cov_ae0478febaa76.s['3']++;(function(){__cov_ae0478febaa76.f['2']++;__cov_ae0478febaa76.s['4']++;local={};__cov_ae0478febaa76.s['5']++;local.modeJs=function(){__cov_ae0478febaa76.f['3']++;__cov_ae0478febaa76.s['6']++;try{__cov_ae0478febaa76.s['7']++;return(__cov_ae0478febaa76.b['1'][0]++,typeof navigator.userAgent==='string')&&(__cov_ae0478febaa76.b['1'][1]++,typeof document.querySelector('body')==='object')&&(__cov_ae0478febaa76.b['1'][2]++,typeof XMLHttpRequest.prototype.open==='function')&&(__cov_ae0478febaa76.b['1'][3]++,'browser');}catch(errorCaughtBrowser){__cov_ae0478febaa76.s['8']++;return(__cov_ae0478febaa76.b['2'][0]++,module.exports)&&(__cov_ae0478febaa76.b['2'][1]++,typeof process.versions.node==='string')&&(__cov_ae0478febaa76.b['2'][2]++,typeof require('http').createServer==='function')&&(__cov_ae0478febaa76.b['2'][3]++,'node');}}();__cov_ae0478febaa76.s['9']++;local.global=local.modeJs==='browser'?(__cov_ae0478febaa76.b['3'][0]++,window):(__cov_ae0478febaa76.b['3'][1]++,global);__cov_ae0478febaa76.s['10']++;local=(__cov_ae0478febaa76.b['4'][0]++,local.global.utility2_rollup)||(__cov_ae0478febaa76.b['4'][1]++,local);__cov_ae0478febaa76.s['11']++;local.local=local.npmtest_gulp_load_plugins=local;__cov_ae0478febaa76.s['12']++;if(local.modeJs==='browser'){__cov_ae0478febaa76.b['5'][0]++;__cov_ae0478febaa76.s['13']++;local.global.utility2_npmtest_gulp_load_plugins=local;}else{__cov_ae0478febaa76.b['5'][1]++;__cov_ae0478febaa76.s['14']++;module.exports=local;__cov_ae0478febaa76.s['15']++;module.exports.__dirname=__dirname;__cov_ae0478febaa76.s['16']++;module.exports.module=module;}}());}());
+__cov_6334600776cac = __cov_6334600776cac['/home/travis/build/npmtest/node-npmtest-gulp-load-plugins/lib.npmtest_gulp_load_plugins.js'];
+__cov_6334600776cac.s['1']++;(function(){'use strict';__cov_6334600776cac.f['1']++;__cov_6334600776cac.s['2']++;var local;__cov_6334600776cac.s['3']++;(function(){__cov_6334600776cac.f['2']++;__cov_6334600776cac.s['4']++;local={};__cov_6334600776cac.s['5']++;local.modeJs=function(){__cov_6334600776cac.f['3']++;__cov_6334600776cac.s['6']++;try{__cov_6334600776cac.s['7']++;return(__cov_6334600776cac.b['1'][0]++,typeof navigator.userAgent==='string')&&(__cov_6334600776cac.b['1'][1]++,typeof document.querySelector('body')==='object')&&(__cov_6334600776cac.b['1'][2]++,typeof XMLHttpRequest.prototype.open==='function')&&(__cov_6334600776cac.b['1'][3]++,'browser');}catch(errorCaughtBrowser){__cov_6334600776cac.s['8']++;return(__cov_6334600776cac.b['2'][0]++,module.exports)&&(__cov_6334600776cac.b['2'][1]++,typeof process.versions.node==='string')&&(__cov_6334600776cac.b['2'][2]++,typeof require('http').createServer==='function')&&(__cov_6334600776cac.b['2'][3]++,'node');}}();__cov_6334600776cac.s['9']++;local.global=local.modeJs==='browser'?(__cov_6334600776cac.b['3'][0]++,window):(__cov_6334600776cac.b['3'][1]++,global);__cov_6334600776cac.s['10']++;local=(__cov_6334600776cac.b['4'][0]++,local.global.utility2_rollup)||(__cov_6334600776cac.b['4'][1]++,local);__cov_6334600776cac.s['11']++;local.local=local.npmtest_gulp_load_plugins=local;__cov_6334600776cac.s['12']++;if(local.modeJs==='browser'){__cov_6334600776cac.b['5'][0]++;__cov_6334600776cac.s['13']++;local.global.utility2_npmtest_gulp_load_plugins=local;}else{__cov_6334600776cac.b['5'][1]++;__cov_6334600776cac.s['14']++;module.exports=local;__cov_6334600776cac.s['15']++;module.exports.__dirname=__dirname;__cov_6334600776cac.s['16']++;module.exports.module=module;}}());}());
 /* script-end /assets.lib.js */
 
 
 
 /* script-begin /assets.example.js */
-var __cov_63fd5f1608e25 = (Function('return this'))();
-if (!__cov_63fd5f1608e25.__coverage__) { __cov_63fd5f1608e25.__coverage__ = {}; }
-__cov_63fd5f1608e25 = __cov_63fd5f1608e25.__coverage__;
-if (!(__cov_63fd5f1608e25['/home/travis/build/npmtest/node-npmtest-gulp-load-plugins/example.js'])) {
-   __cov_63fd5f1608e25['/home/travis/build/npmtest/node-npmtest-gulp-load-plugins/example.js'] = {"path":"/home/travis/build/npmtest/node-npmtest-gulp-load-plugins/example.js","s":{"1":0,"2":0,"3":0,"4":0,"5":0,"6":0,"7":0,"8":0,"9":0,"10":0,"11":0,"12":0,"13":0,"14":0,"15":0,"16":0,"17":0,"18":0,"19":0,"20":0,"21":0,"22":0,"23":0,"24":0,"25":0,"26":0,"27":0,"28":0,"29":0,"30":0,"31":0,"32":0,"33":0,"34":0,"35":0,"36":0,"37":0,"38":0,"39":0,"40":0,"41":0,"42":0,"43":0,"44":0,"45":0,"46":0,"47":0,"48":0,"49":0,"50":0,"51":0,"52":0,"53":0,"54":0,"55":0,"56":0,"57":0,"58":0,"59":0,"60":0,"61":0,"62":0,"63":0,"64":0,"65":0,"66":0,"67":0,"68":0,"69":0,"70":0,"71":0,"72":0,"73":0,"74":0,"75":0,"76":0,"77":0,"78":0,"79":0,"80":0,"81":0,"82":0,"83":0},"b":{"1":[0,0,0,0],"2":[0,0,0,0],"3":[0,0],"4":[0,0],"5":[0,0],"6":[0,0],"7":[0,0],"8":[0,0,0,0,0,0],"9":[0,0,0],"10":[0,0],"11":[0,0,0],"12":[0,0],"13":[0,0],"14":[0,0,0,0,0,0,0],"15":[0,0],"16":[0,0],"17":[0,0],"18":[0,0],"19":[0,0,0,0],"20":[0,0],"21":[0,0],"22":[0,0],"23":[0,0],"24":[0,0],"25":[0,0],"26":[0,0],"27":[0,0],"28":[0,0]},"f":{"1":0,"2":0,"3":0,"4":0,"5":0,"6":0,"7":0,"8":0,"9":0,"10":0,"11":0,"12":0},"fnMap":{"1":{"name":"(anonymous_1)","line":26,"loc":{"start":{"line":26,"column":1},"end":{"line":26,"column":13}}},"2":{"name":"(anonymous_2)","line":33,"loc":{"start":{"line":33,"column":5},"end":{"line":33,"column":17}}},"3":{"name":"(anonymous_3)","line":37,"loc":{"start":{"line":37,"column":24},"end":{"line":37,"column":36}}},"4":{"name":"(anonymous_4)","line":69,"loc":{"start":{"line":69,"column":31},"end":{"line":69,"column":48}},"skip":true},"5":{"name":"(anonymous_5)","line":78,"loc":{"start":{"line":78,"column":26},"end":{"line":78,"column":45}},"skip":true},"6":{"name":"(anonymous_6)","line":123,"loc":{"start":{"line":123,"column":33},"end":{"line":123,"column":48}},"skip":true},"7":{"name":"(anonymous_7)","line":125,"loc":{"start":{"line":125,"column":27},"end":{"line":125,"column":39}},"skip":true},"8":{"name":"(anonymous_8)","line":133,"loc":{"start":{"line":133,"column":59},"end":{"line":133,"column":74}},"skip":true},"9":{"name":"(anonymous_9)","line":143,"loc":{"start":{"line":143,"column":45},"end":{"line":143,"column":62}},"skip":true},"10":{"name":"(anonymous_10)","line":144,"loc":{"start":{"line":144,"column":73},"end":{"line":144,"column":92}},"skip":true},"11":{"name":"(anonymous_11)","line":272,"loc":{"start":{"line":272,"column":51},"end":{"line":272,"column":77}},"skip":true},"12":{"name":"(anonymous_12)","line":314,"loc":{"start":{"line":314,"column":32},"end":{"line":314,"column":61}},"skip":true}},"statementMap":{"1":{"start":{"line":26,"column":0},"end":{"line":325,"column":5}},"2":{"start":{"line":28,"column":4},"end":{"line":28,"column":14}},"3":{"start":{"line":33,"column":4},"end":{"line":60,"column":9}},"4":{"start":{"line":35,"column":8},"end":{"line":35,"column":19}},"5":{"start":{"line":37,"column":8},"end":{"line":49,"column":13}},"6":{"start":{"line":38,"column":12},"end":{"line":48,"column":13}},"7":{"start":{"line":39,"column":16},"end":{"line":42,"column":30}},"8":{"start":{"line":44,"column":16},"end":{"line":47,"column":27}},"9":{"start":{"line":51,"column":8},"end":{"line":53,"column":21}},"10":{"start":{"line":55,"column":8},"end":{"line":57,"column":45}},"11":{"start":{"line":59,"column":8},"end":{"line":59,"column":35}},"12":{"start":{"line":61,"column":4},"end":{"line":324,"column":5}},"13":{"start":{"line":69,"column":8},"end":{"line":121,"column":10},"skip":true},"14":{"start":{"line":70,"column":12},"end":{"line":88,"column":13},"skip":true},"15":{"start":{"line":76,"column":16},"end":{"line":87,"column":19},"skip":true},"16":{"start":{"line":79,"column":20},"end":{"line":86,"column":21},"skip":true},"17":{"start":{"line":82,"column":24},"end":{"line":82,"column":43},"skip":true},"18":{"start":{"line":83,"column":24},"end":{"line":83,"column":30},"skip":true},"19":{"start":{"line":85,"column":24},"end":{"line":85,"column":49},"skip":true},"20":{"start":{"line":89,"column":12},"end":{"line":107,"column":13},"skip":true},"21":{"start":{"line":92,"column":16},"end":{"line":102,"column":17},"skip":true},"22":{"start":{"line":93,"column":20},"end":{"line":93,"column":86},"skip":true},"23":{"start":{"line":94,"column":20},"end":{"line":95,"column":45},"skip":true},"24":{"start":{"line":96,"column":20},"end":{"line":96,"column":42},"skip":true},"25":{"start":{"line":97,"column":20},"end":{"line":97,"column":48},"skip":true},"26":{"start":{"line":100,"column":20},"end":{"line":100,"column":85},"skip":true},"27":{"start":{"line":101,"column":20},"end":{"line":101,"column":96},"skip":true},"28":{"start":{"line":103,"column":16},"end":{"line":103,"column":22},"skip":true},"29":{"start":{"line":106,"column":16},"end":{"line":106,"column":22},"skip":true},"30":{"start":{"line":108,"column":12},"end":{"line":120,"column":13},"skip":true},"31":{"start":{"line":114,"column":16},"end":{"line":119,"column":17},"skip":true},"32":{"start":{"line":116,"column":20},"end":{"line":116,"column":78},"skip":true},"33":{"start":{"line":118,"column":20},"end":{"line":118,"column":47},"skip":true},"34":{"start":{"line":123,"column":8},"end":{"line":141,"column":11},"skip":true},"35":{"start":{"line":124,"column":12},"end":{"line":124,"column":54},"skip":true},"36":{"start":{"line":125,"column":12},"end":{"line":140,"column":14},"skip":true},"37":{"start":{"line":126,"column":16},"end":{"line":126,"column":28},"skip":true},"38":{"start":{"line":127,"column":16},"end":{"line":127,"column":69},"skip":true},"39":{"start":{"line":128,"column":16},"end":{"line":128,"column":75},"skip":true},"40":{"start":{"line":129,"column":16},"end":{"line":131,"column":17},"skip":true},"41":{"start":{"line":130,"column":20},"end":{"line":130,"column":27},"skip":true},"42":{"start":{"line":133,"column":16},"end":{"line":137,"column":36},"skip":true},"43":{"start":{"line":134,"column":20},"end":{"line":136,"column":55},"skip":true},"44":{"start":{"line":139,"column":16},"end":{"line":139,"column":57},"skip":true},"45":{"start":{"line":143,"column":8},"end":{"line":147,"column":11},"skip":true},"46":{"start":{"line":144,"column":12},"end":{"line":146,"column":15},"skip":true},"47":{"start":{"line":145,"column":16},"end":{"line":145,"column":70},"skip":true},"48":{"start":{"line":149,"column":8},"end":{"line":149,"column":31},"skip":true},"49":{"start":{"line":150,"column":8},"end":{"line":150,"column":14},"skip":true},"50":{"start":{"line":158,"column":8},"end":{"line":158,"column":31},"skip":true},"51":{"start":{"line":160,"column":8},"end":{"line":160,"column":33},"skip":true},"52":{"start":{"line":161,"column":8},"end":{"line":161,"column":37},"skip":true},"53":{"start":{"line":162,"column":8},"end":{"line":162,"column":35},"skip":true},"54":{"start":{"line":164,"column":8},"end":{"line":164,"column":50},"skip":true},"55":{"start":{"line":166,"column":8},"end":{"line":256,"column":2},"skip":true},"56":{"start":{"line":258,"column":8},"end":{"line":286,"column":9},"skip":true},"57":{"start":{"line":259,"column":12},"end":{"line":269,"column":14},"skip":true},"58":{"start":{"line":271,"column":12},"end":{"line":285,"column":19},"skip":true},"59":{"start":{"line":274,"column":20},"end":{"line":274,"column":35},"skip":true},"60":{"start":{"line":275,"column":20},"end":{"line":284,"column":21},"skip":true},"61":{"start":{"line":277,"column":24},"end":{"line":277,"column":64},"skip":true},"62":{"start":{"line":279,"column":24},"end":{"line":279,"column":40},"skip":true},"63":{"start":{"line":281,"column":24},"end":{"line":281,"column":40},"skip":true},"64":{"start":{"line":283,"column":24},"end":{"line":283,"column":39},"skip":true},"65":{"start":{"line":288,"column":8},"end":{"line":290,"column":9},"skip":true},"66":{"start":{"line":289,"column":12},"end":{"line":289,"column":18},"skip":true},"67":{"start":{"line":291,"column":8},"end":{"line":293,"column":54},"skip":true},"68":{"start":{"line":294,"column":8},"end":{"line":301,"column":37},"skip":true},"69":{"start":{"line":302,"column":8},"end":{"line":302,"column":82},"skip":true},"70":{"start":{"line":305,"column":8},"end":{"line":307,"column":9},"skip":true},"71":{"start":{"line":306,"column":12},"end":{"line":306,"column":82},"skip":true},"72":{"start":{"line":309,"column":8},"end":{"line":311,"column":9},"skip":true},"73":{"start":{"line":310,"column":12},"end":{"line":310,"column":18},"skip":true},"74":{"start":{"line":312,"column":8},"end":{"line":312,"column":54},"skip":true},"75":{"start":{"line":313,"column":8},"end":{"line":313,"column":69},"skip":true},"76":{"start":{"line":314,"column":8},"end":{"line":322,"column":36},"skip":true},"77":{"start":{"line":315,"column":12},"end":{"line":315,"column":61},"skip":true},"78":{"start":{"line":316,"column":12},"end":{"line":319,"column":13},"skip":true},"79":{"start":{"line":317,"column":16},"end":{"line":317,"column":75},"skip":true},"80":{"start":{"line":318,"column":16},"end":{"line":318,"column":23},"skip":true},"81":{"start":{"line":320,"column":12},"end":{"line":320,"column":38},"skip":true},"82":{"start":{"line":321,"column":12},"end":{"line":321,"column":27},"skip":true},"83":{"start":{"line":323,"column":8},"end":{"line":323,"column":14},"skip":true}},"branchMap":{"1":{"line":39,"type":"binary-expr","locations":[{"start":{"line":39,"column":23},"end":{"line":39,"column":62}},{"start":{"line":40,"column":20},"end":{"line":40,"column":70}},{"start":{"line":41,"column":20},"end":{"line":41,"column":71}},{"start":{"line":42,"column":20},"end":{"line":42,"column":29}}]},"2":{"line":44,"type":"binary-expr","locations":[{"start":{"line":44,"column":23},"end":{"line":44,"column":37}},{"start":{"line":45,"column":20},"end":{"line":45,"column":61}},{"start":{"line":46,"column":20},"end":{"line":46,"column":70}},{"start":{"line":47,"column":20},"end":{"line":47,"column":26}}]},"3":{"line":51,"type":"cond-expr","locations":[{"start":{"line":52,"column":14},"end":{"line":52,"column":20}},{"start":{"line":53,"column":14},"end":{"line":53,"column":20}}]},"4":{"line":55,"type":"binary-expr","locations":[{"start":{"line":55,"column":16},"end":{"line":55,"column":44}},{"start":{"line":55,"column":49},"end":{"line":57,"column":43}}]},"5":{"line":55,"type":"cond-expr","locations":[{"start":{"line":56,"column":14},"end":{"line":56,"column":61}},{"start":{"line":57,"column":14},"end":{"line":57,"column":43}}]},"6":{"line":61,"type":"switch","locations":[{"start":{"line":68,"column":4},"end":{"line":150,"column":14},"skip":true},{"start":{"line":156,"column":4},"end":{"line":323,"column":14},"skip":true}]},"7":{"line":70,"type":"if","locations":[{"start":{"line":70,"column":12},"end":{"line":70,"column":12},"skip":true},{"start":{"line":70,"column":12},"end":{"line":70,"column":12},"skip":true}]},"8":{"line":70,"type":"binary-expr","locations":[{"start":{"line":70,"column":16},"end":{"line":70,"column":22},"skip":true},{"start":{"line":70,"column":27},"end":{"line":70,"column":32},"skip":true},{"start":{"line":71,"column":20},"end":{"line":71,"column":39},"skip":true},{"start":{"line":72,"column":20},"end":{"line":72,"column":49},"skip":true},{"start":{"line":73,"column":20},"end":{"line":73,"column":58},"skip":true},{"start":{"line":74,"column":20},"end":{"line":74,"column":69},"skip":true}]},"9":{"line":79,"type":"switch","locations":[{"start":{"line":80,"column":20},"end":{"line":80,"column":33},"skip":true},{"start":{"line":81,"column":20},"end":{"line":83,"column":30},"skip":true},{"start":{"line":84,"column":20},"end":{"line":85,"column":49},"skip":true}]},"10":{"line":89,"type":"switch","locations":[{"start":{"line":90,"column":12},"end":{"line":103,"column":22},"skip":true},{"start":{"line":105,"column":12},"end":{"line":106,"column":22},"skip":true}]},"11":{"line":89,"type":"binary-expr","locations":[{"start":{"line":89,"column":20},"end":{"line":89,"column":25},"skip":true},{"start":{"line":89,"column":29},"end":{"line":89,"column":48},"skip":true},{"start":{"line":89,"column":52},"end":{"line":89,"column":74},"skip":true}]},"12":{"line":92,"type":"if","locations":[{"start":{"line":92,"column":16},"end":{"line":92,"column":16},"skip":true},{"start":{"line":92,"column":16},"end":{"line":92,"column":16},"skip":true}]},"13":{"line":108,"type":"if","locations":[{"start":{"line":108,"column":12},"end":{"line":108,"column":12},"skip":true},{"start":{"line":108,"column":12},"end":{"line":108,"column":12},"skip":true}]},"14":{"line":108,"type":"binary-expr","locations":[{"start":{"line":108,"column":16},"end":{"line":108,"column":61},"skip":true},{"start":{"line":108,"column":66},"end":{"line":108,"column":72},"skip":true},{"start":{"line":108,"column":77},"end":{"line":108,"column":82},"skip":true},{"start":{"line":109,"column":20},"end":{"line":109,"column":39},"skip":true},{"start":{"line":110,"column":20},"end":{"line":110,"column":49},"skip":true},{"start":{"line":111,"column":20},"end":{"line":111,"column":58},"skip":true},{"start":{"line":112,"column":20},"end":{"line":112,"column":68},"skip":true}]},"15":{"line":129,"type":"if","locations":[{"start":{"line":129,"column":16},"end":{"line":129,"column":16},"skip":true},{"start":{"line":129,"column":16},"end":{"line":129,"column":16},"skip":true}]},"16":{"line":134,"type":"cond-expr","locations":[{"start":{"line":135,"column":26},"end":{"line":135,"column":29},"skip":true},{"start":{"line":136,"column":26},"end":{"line":136,"column":54},"skip":true}]},"17":{"line":164,"type":"binary-expr","locations":[{"start":{"line":164,"column":27},"end":{"line":164,"column":43},"skip":true},{"start":{"line":164,"column":47},"end":{"line":164,"column":49},"skip":true}]},"18":{"line":258,"type":"if","locations":[{"start":{"line":258,"column":8},"end":{"line":258,"column":8},"skip":true},{"start":{"line":258,"column":8},"end":{"line":258,"column":8},"skip":true}]},"19":{"line":275,"type":"switch","locations":[{"start":{"line":276,"column":20},"end":{"line":277,"column":64},"skip":true},{"start":{"line":278,"column":20},"end":{"line":279,"column":40},"skip":true},{"start":{"line":280,"column":20},"end":{"line":281,"column":40},"skip":true},{"start":{"line":282,"column":20},"end":{"line":283,"column":39},"skip":true}]},"20":{"line":288,"type":"if","locations":[{"start":{"line":288,"column":8},"end":{"line":288,"column":8},"skip":true},{"start":{"line":288,"column":8},"end":{"line":288,"column":8},"skip":true}]},"21":{"line":288,"type":"binary-expr","locations":[{"start":{"line":288,"column":12},"end":{"line":288,"column":40},"skip":true},{"start":{"line":288,"column":44},"end":{"line":288,"column":67},"skip":true}]},"22":{"line":292,"type":"binary-expr","locations":[{"start":{"line":292,"column":12},"end":{"line":292,"column":50},"skip":true},{"start":{"line":293,"column":12},"end":{"line":293,"column":53},"skip":true}]},"23":{"line":295,"type":"binary-expr","locations":[{"start":{"line":295,"column":12},"end":{"line":295,"column":75},"skip":true},{"start":{"line":296,"column":12},"end":{"line":301,"column":36},"skip":true}]},"24":{"line":302,"type":"binary-expr","locations":[{"start":{"line":302,"column":43},"end":{"line":302,"column":75},"skip":true},{"start":{"line":302,"column":79},"end":{"line":302,"column":81},"skip":true}]},"25":{"line":305,"type":"if","locations":[{"start":{"line":305,"column":8},"end":{"line":305,"column":8},"skip":true},{"start":{"line":305,"column":8},"end":{"line":305,"column":8},"skip":true}]},"26":{"line":309,"type":"if","locations":[{"start":{"line":309,"column":8},"end":{"line":309,"column":8},"skip":true},{"start":{"line":309,"column":8},"end":{"line":309,"column":8},"skip":true}]},"27":{"line":312,"type":"binary-expr","locations":[{"start":{"line":312,"column":27},"end":{"line":312,"column":43},"skip":true},{"start":{"line":312,"column":47},"end":{"line":312,"column":53},"skip":true}]},"28":{"line":316,"type":"if","locations":[{"start":{"line":316,"column":12},"end":{"line":316,"column":12},"skip":true},{"start":{"line":316,"column":12},"end":{"line":316,"column":12},"skip":true}]}},"code":["/*","example.js","","quickstart example","","instruction","    1. save this script as example.js","    2. run the shell command:","        $ npm install npmtest-gulp-load-plugins && PORT=8081 node example.js","    3. play with the browser-demo on http://127.0.0.1:8081","*/","","","","/* istanbul instrument in package npmtest_gulp_load_plugins */","/*jslint","    bitwise: true,","    browser: true,","    maxerr: 8,","    maxlen: 96,","    node: true,","    nomen: true,","    regexp: true,","    stupid: true","*/","(function () {","    'use strict';","    var local;","","","","    // run shared js-env code - pre-init","    (function () {","        // init local","        local = {};","        // init modeJs","        local.modeJs = (function () {","            try {","                return typeof navigator.userAgent === 'string' &&","                    typeof document.querySelector('body') === 'object' &&","                    typeof XMLHttpRequest.prototype.open === 'function' &&","                    'browser';","            } catch (errorCaughtBrowser) {","                return module.exports &&","                    typeof process.versions.node === 'string' &&","                    typeof require('http').createServer === 'function' &&","                    'node';","            }","        }());","        // init global","        local.global = local.modeJs === 'browser'","            ? window","            : global;","        // init utility2_rollup","        local = local.global.utility2_rollup || (local.modeJs === 'browser'","            ? local.global.utility2_npmtest_gulp_load_plugins","            : global.utility2_moduleExports);","        // export local","        local.global.local = local;","    }());","    switch (local.modeJs) {","","","","    // post-init","    // run browser js-env code - post-init","    /* istanbul ignore next */","    case 'browser':","        local.testRunBrowser = function (event) {","            if (!event || (event &&","                    event.currentTarget &&","                    event.currentTarget.className &&","                    event.currentTarget.className.includes &&","                    event.currentTarget.className.includes('onreset'))) {","                // reset output","                Array.from(","                    document.querySelectorAll('body > .resettable')","                ).forEach(function (element) {","                    switch (element.tagName) {","                    case 'INPUT':","                    case 'TEXTAREA':","                        element.value = '';","                        break;","                    default:","                        element.textContent = '';","                    }","                });","            }","            switch (event && event.currentTarget && event.currentTarget.id) {","            case 'testRunButton1':","                // show tests","                if (document.querySelector('#testReportDiv1').style.display === 'none') {","                    document.querySelector('#testReportDiv1').style.display = 'block';","                    document.querySelector('#testRunButton1').textContent =","                        'hide internal test';","                    local.modeTest = true;","                    local.testRunDefault(local);","                // hide tests","                } else {","                    document.querySelector('#testReportDiv1').style.display = 'none';","                    document.querySelector('#testRunButton1').textContent = 'run internal test';","                }","                break;","            // custom-case","            default:","                break;","            }","            if (document.querySelector('#inputTextareaEval1') && (!event || (event &&","                    event.currentTarget &&","                    event.currentTarget.className &&","                    event.currentTarget.className.includes &&","                    event.currentTarget.className.includes('oneval')))) {","                // try to eval input-code","                try {","                    /*jslint evil: true*/","                    eval(document.querySelector('#inputTextareaEval1').value);","                } catch (errorCaught) {","                    console.error(errorCaught);","                }","            }","        };","        // log stderr and stdout to #outputTextareaStdout1","        ['error', 'log'].forEach(function (key) {","            console[key + '_original'] = console[key];","            console[key] = function () {","                var element;","                console[key + '_original'].apply(console, arguments);","                element = document.querySelector('#outputTextareaStdout1');","                if (!element) {","                    return;","                }","                // append text to #outputTextareaStdout1","                element.value += Array.from(arguments).map(function (arg) {","                    return typeof arg === 'string'","                        ? arg","                        : JSON.stringify(arg, null, 4);","                }).join(' ') + '\\n';","                // scroll textarea to bottom","                element.scrollTop = element.scrollHeight;","            };","        });","        // init event-handling","        ['change', 'click', 'keyup'].forEach(function (event) {","            Array.from(document.querySelectorAll('.on' + event)).forEach(function (element) {","                element.addEventListener(event, local.testRunBrowser);","            });","        });","        // run tests","        local.testRunBrowser();","        break;","","","","    // run node js-env code - post-init","    /* istanbul ignore next */","    case 'node':","        // export local","        module.exports = local;","        // require modules","        local.fs = require('fs');","        local.http = require('http');","        local.url = require('url');","        // init assets","        local.assetsDict = local.assetsDict || {};","        /* jslint-ignore-begin */","        local.assetsDict['/assets.index.template.html'] = '\\","<!doctype html>\\n\\","<html lang=\"en\">\\n\\","<head>\\n\\","<meta charset=\"UTF-8\">\\n\\","<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\\n\\","<title>{{env.npm_package_name}} (v{{env.npm_package_version}})</title>\\n\\","<style>\\n\\","/*csslint\\n\\","    box-sizing: false,\\n\\","    universal-selector: false\\n\\","*/\\n\\","* {\\n\\","    box-sizing: border-box;\\n\\","}\\n\\","body {\\n\\","    background: #dde;\\n\\","    font-family: Arial, Helvetica, sans-serif;\\n\\","    margin: 2rem;\\n\\","}\\n\\","body > * {\\n\\","    margin-bottom: 1rem;\\n\\","}\\n\\",".utility2FooterDiv {\\n\\","    margin-top: 20px;\\n\\","    text-align: center;\\n\\","}\\n\\","</style>\\n\\","<style>\\n\\","/*csslint\\n\\","*/\\n\\","textarea {\\n\\","    font-family: monospace;\\n\\","    height: 10rem;\\n\\","    width: 100%;\\n\\","}\\n\\","textarea[readonly] {\\n\\","    background: #ddd;\\n\\","}\\n\\","</style>\\n\\","</head>\\n\\","<body>\\n\\","<!-- utility2-comment\\n\\","<div id=\"ajaxProgressDiv1\" style=\"background: #d00; height: 2px; left: 0; margin: 0; padding: 0; position: fixed; top: 0; transition: background 0.5s, width 1.5s; width: 25%;\"></div>\\n\\","utility2-comment -->\\n\\","<h1>\\n\\","<!-- utility2-comment\\n\\","    <a\\n\\","        {{#if env.npm_package_homepage}}\\n\\","        href=\"{{env.npm_package_homepage}}\"\\n\\","        {{/if env.npm_package_homepage}}\\n\\","        target=\"_blank\"\\n\\","    >\\n\\","utility2-comment -->\\n\\","        {{env.npm_package_name}} (v{{env.npm_package_version}})\\n\\","<!-- utility2-comment\\n\\","    </a>\\n\\","utility2-comment -->\\n\\","</h1>\\n\\","<h3>{{env.npm_package_description}}</h3>\\n\\","<!-- utility2-comment\\n\\","<h4><a download href=\"assets.app.js\">download standalone app</a></h4>\\n\\","<button class=\"onclick onreset\" id=\"testRunButton1\">run internal test</button><br>\\n\\","<div id=\"testReportDiv1\" style=\"display: none;\"></div>\\n\\","utility2-comment -->\\n\\","\\n\\","\\n\\","\\n\\","<label>stderr and stdout</label>\\n\\","<textarea class=\"resettable\" id=\"outputTextareaStdout1\" readonly></textarea>\\n\\","<!-- utility2-comment\\n\\","{{#if isRollup}}\\n\\","<script src=\"assets.app.js\"></script>\\n\\","{{#unless isRollup}}\\n\\","utility2-comment -->\\n\\","<script src=\"assets.utility2.rollup.js\"></script>\\n\\","<script src=\"jsonp.utility2._stateInit?callback=window.utility2._stateInit\"></script>\\n\\","<script src=\"assets.npmtest_gulp_load_plugins.rollup.js\"></script>\\n\\","<script src=\"assets.example.js\"></script>\\n\\","<script src=\"assets.test.js\"></script>\\n\\","<!-- utility2-comment\\n\\","{{/if isRollup}}\\n\\","utility2-comment -->\\n\\","<div class=\"utility2FooterDiv\">\\n\\","    [ this app was created with\\n\\","    <a href=\"https://github.com/kaizhu256/node-utility2\" target=\"_blank\">utility2</a>\\n\\","    ]\\n\\","</div>\\n\\","</body>\\n\\","</html>\\n\\","';","        /* jslint-ignore-end */","        if (local.templateRender) {","            local.assetsDict['/'] = local.templateRender(","                local.assetsDict['/assets.index.template.html'],","                {","                    env: local.objectSetDefault(local.env, {","                        npm_package_description: 'the greatest app in the world!',","                        npm_package_name: 'my-app',","                        npm_package_nameAlias: 'my_app',","                        npm_package_version: '0.0.1'","                    })","                }","            );","        } else {","            local.assetsDict['/'] = local.assetsDict['/assets.index.template.html']","                .replace((/\\{\\{env\\.(\\w+?)\\}\\}/g), function (match0, match1) {","                    // jslint-hack","                    String(match0);","                    switch (match1) {","                    case 'npm_package_description':","                        return 'the greatest app in the world!';","                    case 'npm_package_name':","                        return 'my-app';","                    case 'npm_package_nameAlias':","                        return 'my_app';","                    case 'npm_package_version':","                        return '0.0.1';","                    }","                });","        }","        // run the cli","        if (local.global.utility2_rollup || module !== require.main) {","            break;","        }","        local.assetsDict['/assets.example.js'] =","            local.assetsDict['/assets.example.js'] ||","            local.fs.readFileSync(__filename, 'utf8');","        local.assetsDict['/assets.npmtest_gulp_load_plugins.rollup.js'] =","            local.assetsDict['/assets.npmtest_gulp_load_plugins.rollup.js'] ||","            local.fs.readFileSync(","                // buildCustomOrg-hack","                local.npmtest_gulp_load_plugins.__dirname +","                    '/lib.npmtest_gulp_load_plugins.js',","                'utf8'","            ).replace((/^#!/), '//');","        local.assetsDict['/favicon.ico'] = local.assetsDict['/favicon.ico'] || '';","        // if $npm_config_timeout_exit exists,","        // then exit this process after $npm_config_timeout_exit ms","        if (Number(process.env.npm_config_timeout_exit)) {","            setTimeout(process.exit, Number(process.env.npm_config_timeout_exit));","        }","        // start server","        if (local.global.utility2_serverHttp1) {","            break;","        }","        process.env.PORT = process.env.PORT || '8081';","        console.error('server starting on port ' + process.env.PORT);","        local.http.createServer(function (request, response) {","            request.urlParsed = local.url.parse(request.url);","            if (local.assetsDict[request.urlParsed.pathname] !== undefined) {","                response.end(local.assetsDict[request.urlParsed.pathname]);","                return;","            }","            response.statusCode = 404;","            response.end();","        }).listen(process.env.PORT);","        break;","    }","}());",""]};
+var __cov_ac4266f7bf993 = (Function('return this'))();
+if (!__cov_ac4266f7bf993.__coverage__) { __cov_ac4266f7bf993.__coverage__ = {}; }
+__cov_ac4266f7bf993 = __cov_ac4266f7bf993.__coverage__;
+if (!(__cov_ac4266f7bf993['/home/travis/build/npmtest/node-npmtest-gulp-load-plugins/example.js'])) {
+   __cov_ac4266f7bf993['/home/travis/build/npmtest/node-npmtest-gulp-load-plugins/example.js'] = {"path":"/home/travis/build/npmtest/node-npmtest-gulp-load-plugins/example.js","s":{"1":0,"2":0,"3":0,"4":0,"5":0,"6":0,"7":0,"8":0,"9":0,"10":0,"11":0,"12":0,"13":0,"14":0,"15":0,"16":0,"17":0,"18":0,"19":0,"20":0,"21":0,"22":0,"23":0,"24":0,"25":0,"26":0,"27":0,"28":0,"29":0,"30":0,"31":0,"32":0,"33":0,"34":0,"35":0,"36":0,"37":0,"38":0,"39":0,"40":0,"41":0,"42":0,"43":0,"44":0,"45":0,"46":0,"47":0,"48":0,"49":0,"50":0,"51":0,"52":0,"53":0,"54":0,"55":0,"56":0,"57":0,"58":0,"59":0,"60":0,"61":0,"62":0,"63":0,"64":0,"65":0,"66":0,"67":0,"68":0,"69":0,"70":0,"71":0,"72":0,"73":0,"74":0,"75":0,"76":0,"77":0,"78":0,"79":0,"80":0,"81":0,"82":0,"83":0},"b":{"1":[0,0,0,0],"2":[0,0,0,0],"3":[0,0],"4":[0,0],"5":[0,0],"6":[0,0],"7":[0,0],"8":[0,0,0,0,0,0],"9":[0,0,0],"10":[0,0],"11":[0,0,0],"12":[0,0],"13":[0,0],"14":[0,0,0,0,0,0,0],"15":[0,0],"16":[0,0],"17":[0,0],"18":[0,0],"19":[0,0,0,0],"20":[0,0],"21":[0,0],"22":[0,0],"23":[0,0],"24":[0,0],"25":[0,0],"26":[0,0],"27":[0,0],"28":[0,0]},"f":{"1":0,"2":0,"3":0,"4":0,"5":0,"6":0,"7":0,"8":0,"9":0,"10":0,"11":0,"12":0},"fnMap":{"1":{"name":"(anonymous_1)","line":26,"loc":{"start":{"line":26,"column":1},"end":{"line":26,"column":13}}},"2":{"name":"(anonymous_2)","line":33,"loc":{"start":{"line":33,"column":5},"end":{"line":33,"column":17}}},"3":{"name":"(anonymous_3)","line":37,"loc":{"start":{"line":37,"column":24},"end":{"line":37,"column":36}}},"4":{"name":"(anonymous_4)","line":69,"loc":{"start":{"line":69,"column":31},"end":{"line":69,"column":48}},"skip":true},"5":{"name":"(anonymous_5)","line":78,"loc":{"start":{"line":78,"column":26},"end":{"line":78,"column":45}},"skip":true},"6":{"name":"(anonymous_6)","line":123,"loc":{"start":{"line":123,"column":33},"end":{"line":123,"column":48}},"skip":true},"7":{"name":"(anonymous_7)","line":125,"loc":{"start":{"line":125,"column":27},"end":{"line":125,"column":39}},"skip":true},"8":{"name":"(anonymous_8)","line":133,"loc":{"start":{"line":133,"column":59},"end":{"line":133,"column":74}},"skip":true},"9":{"name":"(anonymous_9)","line":143,"loc":{"start":{"line":143,"column":45},"end":{"line":143,"column":62}},"skip":true},"10":{"name":"(anonymous_10)","line":144,"loc":{"start":{"line":144,"column":73},"end":{"line":144,"column":92}},"skip":true},"11":{"name":"(anonymous_11)","line":272,"loc":{"start":{"line":272,"column":51},"end":{"line":272,"column":77}},"skip":true},"12":{"name":"(anonymous_12)","line":315,"loc":{"start":{"line":315,"column":32},"end":{"line":315,"column":61}},"skip":true}},"statementMap":{"1":{"start":{"line":26,"column":0},"end":{"line":326,"column":5}},"2":{"start":{"line":28,"column":4},"end":{"line":28,"column":14}},"3":{"start":{"line":33,"column":4},"end":{"line":60,"column":9}},"4":{"start":{"line":35,"column":8},"end":{"line":35,"column":19}},"5":{"start":{"line":37,"column":8},"end":{"line":49,"column":13}},"6":{"start":{"line":38,"column":12},"end":{"line":48,"column":13}},"7":{"start":{"line":39,"column":16},"end":{"line":42,"column":30}},"8":{"start":{"line":44,"column":16},"end":{"line":47,"column":27}},"9":{"start":{"line":51,"column":8},"end":{"line":53,"column":21}},"10":{"start":{"line":55,"column":8},"end":{"line":57,"column":45}},"11":{"start":{"line":59,"column":8},"end":{"line":59,"column":35}},"12":{"start":{"line":61,"column":4},"end":{"line":325,"column":5}},"13":{"start":{"line":69,"column":8},"end":{"line":121,"column":10},"skip":true},"14":{"start":{"line":70,"column":12},"end":{"line":88,"column":13},"skip":true},"15":{"start":{"line":76,"column":16},"end":{"line":87,"column":19},"skip":true},"16":{"start":{"line":79,"column":20},"end":{"line":86,"column":21},"skip":true},"17":{"start":{"line":82,"column":24},"end":{"line":82,"column":43},"skip":true},"18":{"start":{"line":83,"column":24},"end":{"line":83,"column":30},"skip":true},"19":{"start":{"line":85,"column":24},"end":{"line":85,"column":49},"skip":true},"20":{"start":{"line":89,"column":12},"end":{"line":107,"column":13},"skip":true},"21":{"start":{"line":92,"column":16},"end":{"line":102,"column":17},"skip":true},"22":{"start":{"line":93,"column":20},"end":{"line":93,"column":86},"skip":true},"23":{"start":{"line":94,"column":20},"end":{"line":95,"column":45},"skip":true},"24":{"start":{"line":96,"column":20},"end":{"line":96,"column":42},"skip":true},"25":{"start":{"line":97,"column":20},"end":{"line":97,"column":48},"skip":true},"26":{"start":{"line":100,"column":20},"end":{"line":100,"column":85},"skip":true},"27":{"start":{"line":101,"column":20},"end":{"line":101,"column":96},"skip":true},"28":{"start":{"line":103,"column":16},"end":{"line":103,"column":22},"skip":true},"29":{"start":{"line":106,"column":16},"end":{"line":106,"column":22},"skip":true},"30":{"start":{"line":108,"column":12},"end":{"line":120,"column":13},"skip":true},"31":{"start":{"line":114,"column":16},"end":{"line":119,"column":17},"skip":true},"32":{"start":{"line":116,"column":20},"end":{"line":116,"column":78},"skip":true},"33":{"start":{"line":118,"column":20},"end":{"line":118,"column":47},"skip":true},"34":{"start":{"line":123,"column":8},"end":{"line":141,"column":11},"skip":true},"35":{"start":{"line":124,"column":12},"end":{"line":124,"column":54},"skip":true},"36":{"start":{"line":125,"column":12},"end":{"line":140,"column":14},"skip":true},"37":{"start":{"line":126,"column":16},"end":{"line":126,"column":28},"skip":true},"38":{"start":{"line":127,"column":16},"end":{"line":127,"column":69},"skip":true},"39":{"start":{"line":128,"column":16},"end":{"line":128,"column":75},"skip":true},"40":{"start":{"line":129,"column":16},"end":{"line":131,"column":17},"skip":true},"41":{"start":{"line":130,"column":20},"end":{"line":130,"column":27},"skip":true},"42":{"start":{"line":133,"column":16},"end":{"line":137,"column":36},"skip":true},"43":{"start":{"line":134,"column":20},"end":{"line":136,"column":55},"skip":true},"44":{"start":{"line":139,"column":16},"end":{"line":139,"column":57},"skip":true},"45":{"start":{"line":143,"column":8},"end":{"line":147,"column":11},"skip":true},"46":{"start":{"line":144,"column":12},"end":{"line":146,"column":15},"skip":true},"47":{"start":{"line":145,"column":16},"end":{"line":145,"column":70},"skip":true},"48":{"start":{"line":149,"column":8},"end":{"line":149,"column":31},"skip":true},"49":{"start":{"line":150,"column":8},"end":{"line":150,"column":14},"skip":true},"50":{"start":{"line":158,"column":8},"end":{"line":158,"column":31},"skip":true},"51":{"start":{"line":160,"column":8},"end":{"line":160,"column":33},"skip":true},"52":{"start":{"line":161,"column":8},"end":{"line":161,"column":37},"skip":true},"53":{"start":{"line":162,"column":8},"end":{"line":162,"column":35},"skip":true},"54":{"start":{"line":164,"column":8},"end":{"line":164,"column":50},"skip":true},"55":{"start":{"line":166,"column":8},"end":{"line":256,"column":2},"skip":true},"56":{"start":{"line":258,"column":8},"end":{"line":286,"column":9},"skip":true},"57":{"start":{"line":259,"column":12},"end":{"line":269,"column":14},"skip":true},"58":{"start":{"line":271,"column":12},"end":{"line":285,"column":19},"skip":true},"59":{"start":{"line":274,"column":20},"end":{"line":274,"column":35},"skip":true},"60":{"start":{"line":275,"column":20},"end":{"line":284,"column":21},"skip":true},"61":{"start":{"line":277,"column":24},"end":{"line":277,"column":64},"skip":true},"62":{"start":{"line":279,"column":24},"end":{"line":279,"column":40},"skip":true},"63":{"start":{"line":281,"column":24},"end":{"line":281,"column":40},"skip":true},"64":{"start":{"line":283,"column":24},"end":{"line":283,"column":39},"skip":true},"65":{"start":{"line":288,"column":8},"end":{"line":290,"column":9},"skip":true},"66":{"start":{"line":289,"column":12},"end":{"line":289,"column":18},"skip":true},"67":{"start":{"line":291,"column":8},"end":{"line":293,"column":54},"skip":true},"68":{"start":{"line":296,"column":8},"end":{"line":301,"column":37},"skip":true},"69":{"start":{"line":303,"column":8},"end":{"line":303,"column":82},"skip":true},"70":{"start":{"line":306,"column":8},"end":{"line":308,"column":9},"skip":true},"71":{"start":{"line":307,"column":12},"end":{"line":307,"column":82},"skip":true},"72":{"start":{"line":310,"column":8},"end":{"line":312,"column":9},"skip":true},"73":{"start":{"line":311,"column":12},"end":{"line":311,"column":18},"skip":true},"74":{"start":{"line":313,"column":8},"end":{"line":313,"column":54},"skip":true},"75":{"start":{"line":314,"column":8},"end":{"line":314,"column":69},"skip":true},"76":{"start":{"line":315,"column":8},"end":{"line":323,"column":36},"skip":true},"77":{"start":{"line":316,"column":12},"end":{"line":316,"column":61},"skip":true},"78":{"start":{"line":317,"column":12},"end":{"line":320,"column":13},"skip":true},"79":{"start":{"line":318,"column":16},"end":{"line":318,"column":75},"skip":true},"80":{"start":{"line":319,"column":16},"end":{"line":319,"column":23},"skip":true},"81":{"start":{"line":321,"column":12},"end":{"line":321,"column":38},"skip":true},"82":{"start":{"line":322,"column":12},"end":{"line":322,"column":27},"skip":true},"83":{"start":{"line":324,"column":8},"end":{"line":324,"column":14},"skip":true}},"branchMap":{"1":{"line":39,"type":"binary-expr","locations":[{"start":{"line":39,"column":23},"end":{"line":39,"column":62}},{"start":{"line":40,"column":20},"end":{"line":40,"column":70}},{"start":{"line":41,"column":20},"end":{"line":41,"column":71}},{"start":{"line":42,"column":20},"end":{"line":42,"column":29}}]},"2":{"line":44,"type":"binary-expr","locations":[{"start":{"line":44,"column":23},"end":{"line":44,"column":37}},{"start":{"line":45,"column":20},"end":{"line":45,"column":61}},{"start":{"line":46,"column":20},"end":{"line":46,"column":70}},{"start":{"line":47,"column":20},"end":{"line":47,"column":26}}]},"3":{"line":51,"type":"cond-expr","locations":[{"start":{"line":52,"column":14},"end":{"line":52,"column":20}},{"start":{"line":53,"column":14},"end":{"line":53,"column":20}}]},"4":{"line":55,"type":"binary-expr","locations":[{"start":{"line":55,"column":16},"end":{"line":55,"column":44}},{"start":{"line":55,"column":49},"end":{"line":57,"column":43}}]},"5":{"line":55,"type":"cond-expr","locations":[{"start":{"line":56,"column":14},"end":{"line":56,"column":61}},{"start":{"line":57,"column":14},"end":{"line":57,"column":43}}]},"6":{"line":61,"type":"switch","locations":[{"start":{"line":68,"column":4},"end":{"line":150,"column":14},"skip":true},{"start":{"line":156,"column":4},"end":{"line":324,"column":14},"skip":true}]},"7":{"line":70,"type":"if","locations":[{"start":{"line":70,"column":12},"end":{"line":70,"column":12},"skip":true},{"start":{"line":70,"column":12},"end":{"line":70,"column":12},"skip":true}]},"8":{"line":70,"type":"binary-expr","locations":[{"start":{"line":70,"column":16},"end":{"line":70,"column":22},"skip":true},{"start":{"line":70,"column":27},"end":{"line":70,"column":32},"skip":true},{"start":{"line":71,"column":20},"end":{"line":71,"column":39},"skip":true},{"start":{"line":72,"column":20},"end":{"line":72,"column":49},"skip":true},{"start":{"line":73,"column":20},"end":{"line":73,"column":58},"skip":true},{"start":{"line":74,"column":20},"end":{"line":74,"column":69},"skip":true}]},"9":{"line":79,"type":"switch","locations":[{"start":{"line":80,"column":20},"end":{"line":80,"column":33},"skip":true},{"start":{"line":81,"column":20},"end":{"line":83,"column":30},"skip":true},{"start":{"line":84,"column":20},"end":{"line":85,"column":49},"skip":true}]},"10":{"line":89,"type":"switch","locations":[{"start":{"line":90,"column":12},"end":{"line":103,"column":22},"skip":true},{"start":{"line":105,"column":12},"end":{"line":106,"column":22},"skip":true}]},"11":{"line":89,"type":"binary-expr","locations":[{"start":{"line":89,"column":20},"end":{"line":89,"column":25},"skip":true},{"start":{"line":89,"column":29},"end":{"line":89,"column":48},"skip":true},{"start":{"line":89,"column":52},"end":{"line":89,"column":74},"skip":true}]},"12":{"line":92,"type":"if","locations":[{"start":{"line":92,"column":16},"end":{"line":92,"column":16},"skip":true},{"start":{"line":92,"column":16},"end":{"line":92,"column":16},"skip":true}]},"13":{"line":108,"type":"if","locations":[{"start":{"line":108,"column":12},"end":{"line":108,"column":12},"skip":true},{"start":{"line":108,"column":12},"end":{"line":108,"column":12},"skip":true}]},"14":{"line":108,"type":"binary-expr","locations":[{"start":{"line":108,"column":16},"end":{"line":108,"column":61},"skip":true},{"start":{"line":108,"column":66},"end":{"line":108,"column":72},"skip":true},{"start":{"line":108,"column":77},"end":{"line":108,"column":82},"skip":true},{"start":{"line":109,"column":20},"end":{"line":109,"column":39},"skip":true},{"start":{"line":110,"column":20},"end":{"line":110,"column":49},"skip":true},{"start":{"line":111,"column":20},"end":{"line":111,"column":58},"skip":true},{"start":{"line":112,"column":20},"end":{"line":112,"column":68},"skip":true}]},"15":{"line":129,"type":"if","locations":[{"start":{"line":129,"column":16},"end":{"line":129,"column":16},"skip":true},{"start":{"line":129,"column":16},"end":{"line":129,"column":16},"skip":true}]},"16":{"line":134,"type":"cond-expr","locations":[{"start":{"line":135,"column":26},"end":{"line":135,"column":29},"skip":true},{"start":{"line":136,"column":26},"end":{"line":136,"column":54},"skip":true}]},"17":{"line":164,"type":"binary-expr","locations":[{"start":{"line":164,"column":27},"end":{"line":164,"column":43},"skip":true},{"start":{"line":164,"column":47},"end":{"line":164,"column":49},"skip":true}]},"18":{"line":258,"type":"if","locations":[{"start":{"line":258,"column":8},"end":{"line":258,"column":8},"skip":true},{"start":{"line":258,"column":8},"end":{"line":258,"column":8},"skip":true}]},"19":{"line":275,"type":"switch","locations":[{"start":{"line":276,"column":20},"end":{"line":277,"column":64},"skip":true},{"start":{"line":278,"column":20},"end":{"line":279,"column":40},"skip":true},{"start":{"line":280,"column":20},"end":{"line":281,"column":40},"skip":true},{"start":{"line":282,"column":20},"end":{"line":283,"column":39},"skip":true}]},"20":{"line":288,"type":"if","locations":[{"start":{"line":288,"column":8},"end":{"line":288,"column":8},"skip":true},{"start":{"line":288,"column":8},"end":{"line":288,"column":8},"skip":true}]},"21":{"line":288,"type":"binary-expr","locations":[{"start":{"line":288,"column":12},"end":{"line":288,"column":40},"skip":true},{"start":{"line":288,"column":44},"end":{"line":288,"column":67},"skip":true}]},"22":{"line":292,"type":"binary-expr","locations":[{"start":{"line":292,"column":12},"end":{"line":292,"column":50},"skip":true},{"start":{"line":293,"column":12},"end":{"line":293,"column":53},"skip":true}]},"23":{"line":297,"type":"binary-expr","locations":[{"start":{"line":297,"column":12},"end":{"line":297,"column":75},"skip":true},{"start":{"line":298,"column":12},"end":{"line":301,"column":36},"skip":true}]},"24":{"line":303,"type":"binary-expr","locations":[{"start":{"line":303,"column":43},"end":{"line":303,"column":75},"skip":true},{"start":{"line":303,"column":79},"end":{"line":303,"column":81},"skip":true}]},"25":{"line":306,"type":"if","locations":[{"start":{"line":306,"column":8},"end":{"line":306,"column":8},"skip":true},{"start":{"line":306,"column":8},"end":{"line":306,"column":8},"skip":true}]},"26":{"line":310,"type":"if","locations":[{"start":{"line":310,"column":8},"end":{"line":310,"column":8},"skip":true},{"start":{"line":310,"column":8},"end":{"line":310,"column":8},"skip":true}]},"27":{"line":313,"type":"binary-expr","locations":[{"start":{"line":313,"column":27},"end":{"line":313,"column":43},"skip":true},{"start":{"line":313,"column":47},"end":{"line":313,"column":53},"skip":true}]},"28":{"line":317,"type":"if","locations":[{"start":{"line":317,"column":12},"end":{"line":317,"column":12},"skip":true},{"start":{"line":317,"column":12},"end":{"line":317,"column":12},"skip":true}]}},"code":["/*","example.js","","quickstart example","","instruction","    1. save this script as example.js","    2. run the shell command:","        $ npm install npmtest-gulp-load-plugins && PORT=8081 node example.js","    3. play with the browser-demo on http://127.0.0.1:8081","*/","","","","/* istanbul instrument in package npmtest_gulp_load_plugins */","/*jslint","    bitwise: true,","    browser: true,","    maxerr: 8,","    maxlen: 96,","    node: true,","    nomen: true,","    regexp: true,","    stupid: true","*/","(function () {","    'use strict';","    var local;","","","","    // run shared js-env code - pre-init","    (function () {","        // init local","        local = {};","        // init modeJs","        local.modeJs = (function () {","            try {","                return typeof navigator.userAgent === 'string' &&","                    typeof document.querySelector('body') === 'object' &&","                    typeof XMLHttpRequest.prototype.open === 'function' &&","                    'browser';","            } catch (errorCaughtBrowser) {","                return module.exports &&","                    typeof process.versions.node === 'string' &&","                    typeof require('http').createServer === 'function' &&","                    'node';","            }","        }());","        // init global","        local.global = local.modeJs === 'browser'","            ? window","            : global;","        // init utility2_rollup","        local = local.global.utility2_rollup || (local.modeJs === 'browser'","            ? local.global.utility2_npmtest_gulp_load_plugins","            : global.utility2_moduleExports);","        // export local","        local.global.local = local;","    }());","    switch (local.modeJs) {","","","","    // post-init","    // run browser js-env code - post-init","    /* istanbul ignore next */","    case 'browser':","        local.testRunBrowser = function (event) {","            if (!event || (event &&","                    event.currentTarget &&","                    event.currentTarget.className &&","                    event.currentTarget.className.includes &&","                    event.currentTarget.className.includes('onreset'))) {","                // reset output","                Array.from(","                    document.querySelectorAll('body > .resettable')","                ).forEach(function (element) {","                    switch (element.tagName) {","                    case 'INPUT':","                    case 'TEXTAREA':","                        element.value = '';","                        break;","                    default:","                        element.textContent = '';","                    }","                });","            }","            switch (event && event.currentTarget && event.currentTarget.id) {","            case 'testRunButton1':","                // show tests","                if (document.querySelector('#testReportDiv1').style.display === 'none') {","                    document.querySelector('#testReportDiv1').style.display = 'block';","                    document.querySelector('#testRunButton1').textContent =","                        'hide internal test';","                    local.modeTest = true;","                    local.testRunDefault(local);","                // hide tests","                } else {","                    document.querySelector('#testReportDiv1').style.display = 'none';","                    document.querySelector('#testRunButton1').textContent = 'run internal test';","                }","                break;","            // custom-case","            default:","                break;","            }","            if (document.querySelector('#inputTextareaEval1') && (!event || (event &&","                    event.currentTarget &&","                    event.currentTarget.className &&","                    event.currentTarget.className.includes &&","                    event.currentTarget.className.includes('oneval')))) {","                // try to eval input-code","                try {","                    /*jslint evil: true*/","                    eval(document.querySelector('#inputTextareaEval1').value);","                } catch (errorCaught) {","                    console.error(errorCaught);","                }","            }","        };","        // log stderr and stdout to #outputTextareaStdout1","        ['error', 'log'].forEach(function (key) {","            console[key + '_original'] = console[key];","            console[key] = function () {","                var element;","                console[key + '_original'].apply(console, arguments);","                element = document.querySelector('#outputTextareaStdout1');","                if (!element) {","                    return;","                }","                // append text to #outputTextareaStdout1","                element.value += Array.from(arguments).map(function (arg) {","                    return typeof arg === 'string'","                        ? arg","                        : JSON.stringify(arg, null, 4);","                }).join(' ') + '\\n';","                // scroll textarea to bottom","                element.scrollTop = element.scrollHeight;","            };","        });","        // init event-handling","        ['change', 'click', 'keyup'].forEach(function (event) {","            Array.from(document.querySelectorAll('.on' + event)).forEach(function (element) {","                element.addEventListener(event, local.testRunBrowser);","            });","        });","        // run tests","        local.testRunBrowser();","        break;","","","","    // run node js-env code - post-init","    /* istanbul ignore next */","    case 'node':","        // export local","        module.exports = local;","        // require modules","        local.fs = require('fs');","        local.http = require('http');","        local.url = require('url');","        // init assets","        local.assetsDict = local.assetsDict || {};","        /* jslint-ignore-begin */","        local.assetsDict['/assets.index.template.html'] = '\\","<!doctype html>\\n\\","<html lang=\"en\">\\n\\","<head>\\n\\","<meta charset=\"UTF-8\">\\n\\","<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\\n\\","<title>{{env.npm_package_name}} (v{{env.npm_package_version}})</title>\\n\\","<style>\\n\\","/*csslint\\n\\","    box-sizing: false,\\n\\","    universal-selector: false\\n\\","*/\\n\\","* {\\n\\","    box-sizing: border-box;\\n\\","}\\n\\","body {\\n\\","    background: #dde;\\n\\","    font-family: Arial, Helvetica, sans-serif;\\n\\","    margin: 2rem;\\n\\","}\\n\\","body > * {\\n\\","    margin-bottom: 1rem;\\n\\","}\\n\\",".utility2FooterDiv {\\n\\","    margin-top: 20px;\\n\\","    text-align: center;\\n\\","}\\n\\","</style>\\n\\","<style>\\n\\","/*csslint\\n\\","*/\\n\\","textarea {\\n\\","    font-family: monospace;\\n\\","    height: 10rem;\\n\\","    width: 100%;\\n\\","}\\n\\","textarea[readonly] {\\n\\","    background: #ddd;\\n\\","}\\n\\","</style>\\n\\","</head>\\n\\","<body>\\n\\","<!-- utility2-comment\\n\\","<div id=\"ajaxProgressDiv1\" style=\"background: #d00; height: 2px; left: 0; margin: 0; padding: 0; position: fixed; top: 0; transition: background 0.5s, width 1.5s; width: 25%;\"></div>\\n\\","utility2-comment -->\\n\\","<h1>\\n\\","<!-- utility2-comment\\n\\","    <a\\n\\","        {{#if env.npm_package_homepage}}\\n\\","        href=\"{{env.npm_package_homepage}}\"\\n\\","        {{/if env.npm_package_homepage}}\\n\\","        target=\"_blank\"\\n\\","    >\\n\\","utility2-comment -->\\n\\","        {{env.npm_package_name}} (v{{env.npm_package_version}})\\n\\","<!-- utility2-comment\\n\\","    </a>\\n\\","utility2-comment -->\\n\\","</h1>\\n\\","<h3>{{env.npm_package_description}}</h3>\\n\\","<!-- utility2-comment\\n\\","<h4><a download href=\"assets.app.js\">download standalone app</a></h4>\\n\\","<button class=\"onclick onreset\" id=\"testRunButton1\">run internal test</button><br>\\n\\","<div id=\"testReportDiv1\" style=\"display: none;\"></div>\\n\\","utility2-comment -->\\n\\","\\n\\","\\n\\","\\n\\","<label>stderr and stdout</label>\\n\\","<textarea class=\"resettable\" id=\"outputTextareaStdout1\" readonly></textarea>\\n\\","<!-- utility2-comment\\n\\","{{#if isRollup}}\\n\\","<script src=\"assets.app.js\"></script>\\n\\","{{#unless isRollup}}\\n\\","utility2-comment -->\\n\\","<script src=\"assets.utility2.rollup.js\"></script>\\n\\","<script src=\"jsonp.utility2._stateInit?callback=window.utility2._stateInit\"></script>\\n\\","<script src=\"assets.npmtest_gulp_load_plugins.rollup.js\"></script>\\n\\","<script src=\"assets.example.js\"></script>\\n\\","<script src=\"assets.test.js\"></script>\\n\\","<!-- utility2-comment\\n\\","{{/if isRollup}}\\n\\","utility2-comment -->\\n\\","<div class=\"utility2FooterDiv\">\\n\\","    [ this app was created with\\n\\","    <a href=\"https://github.com/kaizhu256/node-utility2\" target=\"_blank\">utility2</a>\\n\\","    ]\\n\\","</div>\\n\\","</body>\\n\\","</html>\\n\\","';","        /* jslint-ignore-end */","        if (local.templateRender) {","            local.assetsDict['/'] = local.templateRender(","                local.assetsDict['/assets.index.template.html'],","                {","                    env: local.objectSetDefault(local.env, {","                        npm_package_description: 'the greatest app in the world!',","                        npm_package_name: 'my-app',","                        npm_package_nameAlias: 'my_app',","                        npm_package_version: '0.0.1'","                    })","                }","            );","        } else {","            local.assetsDict['/'] = local.assetsDict['/assets.index.template.html']","                .replace((/\\{\\{env\\.(\\w+?)\\}\\}/g), function (match0, match1) {","                    // jslint-hack","                    String(match0);","                    switch (match1) {","                    case 'npm_package_description':","                        return 'the greatest app in the world!';","                    case 'npm_package_name':","                        return 'my-app';","                    case 'npm_package_nameAlias':","                        return 'my_app';","                    case 'npm_package_version':","                        return '0.0.1';","                    }","                });","        }","        // run the cli","        if (local.global.utility2_rollup || module !== require.main) {","            break;","        }","        local.assetsDict['/assets.example.js'] =","            local.assetsDict['/assets.example.js'] ||","            local.fs.readFileSync(__filename, 'utf8');","        // bug-workaround - long $npm_package_buildCustomOrg","        /* jslint-ignore-begin */","        local.assetsDict['/assets.npmtest_gulp_load_plugins.rollup.js'] =","            local.assetsDict['/assets.npmtest_gulp_load_plugins.rollup.js'] ||","            local.fs.readFileSync(","                local.npmtest_gulp_load_plugins.__dirname + '/lib.npmtest_gulp_load_plugins.js',","                'utf8'","            ).replace((/^#!/), '//');","        /* jslint-ignore-end */","        local.assetsDict['/favicon.ico'] = local.assetsDict['/favicon.ico'] || '';","        // if $npm_config_timeout_exit exists,","        // then exit this process after $npm_config_timeout_exit ms","        if (Number(process.env.npm_config_timeout_exit)) {","            setTimeout(process.exit, Number(process.env.npm_config_timeout_exit));","        }","        // start server","        if (local.global.utility2_serverHttp1) {","            break;","        }","        process.env.PORT = process.env.PORT || '8081';","        console.error('server starting on port ' + process.env.PORT);","        local.http.createServer(function (request, response) {","            request.urlParsed = local.url.parse(request.url);","            if (local.assetsDict[request.urlParsed.pathname] !== undefined) {","                response.end(local.assetsDict[request.urlParsed.pathname]);","                return;","            }","            response.statusCode = 404;","            response.end();","        }).listen(process.env.PORT);","        break;","    }","}());",""]};
 }
-__cov_63fd5f1608e25 = __cov_63fd5f1608e25['/home/travis/build/npmtest/node-npmtest-gulp-load-plugins/example.js'];
-__cov_63fd5f1608e25.s['1']++;(function(){'use strict';__cov_63fd5f1608e25.f['1']++;__cov_63fd5f1608e25.s['2']++;var local;__cov_63fd5f1608e25.s['3']++;(function(){__cov_63fd5f1608e25.f['2']++;__cov_63fd5f1608e25.s['4']++;local={};__cov_63fd5f1608e25.s['5']++;local.modeJs=function(){__cov_63fd5f1608e25.f['3']++;__cov_63fd5f1608e25.s['6']++;try{__cov_63fd5f1608e25.s['7']++;return(__cov_63fd5f1608e25.b['1'][0]++,typeof navigator.userAgent==='string')&&(__cov_63fd5f1608e25.b['1'][1]++,typeof document.querySelector('body')==='object')&&(__cov_63fd5f1608e25.b['1'][2]++,typeof XMLHttpRequest.prototype.open==='function')&&(__cov_63fd5f1608e25.b['1'][3]++,'browser');}catch(errorCaughtBrowser){__cov_63fd5f1608e25.s['8']++;return(__cov_63fd5f1608e25.b['2'][0]++,module.exports)&&(__cov_63fd5f1608e25.b['2'][1]++,typeof process.versions.node==='string')&&(__cov_63fd5f1608e25.b['2'][2]++,typeof require('http').createServer==='function')&&(__cov_63fd5f1608e25.b['2'][3]++,'node');}}();__cov_63fd5f1608e25.s['9']++;local.global=local.modeJs==='browser'?(__cov_63fd5f1608e25.b['3'][0]++,window):(__cov_63fd5f1608e25.b['3'][1]++,global);__cov_63fd5f1608e25.s['10']++;local=(__cov_63fd5f1608e25.b['4'][0]++,local.global.utility2_rollup)||(__cov_63fd5f1608e25.b['4'][1]++,local.modeJs==='browser'?(__cov_63fd5f1608e25.b['5'][0]++,local.global.utility2_npmtest_gulp_load_plugins):(__cov_63fd5f1608e25.b['5'][1]++,global.utility2_moduleExports));__cov_63fd5f1608e25.s['11']++;local.global.local=local;}());__cov_63fd5f1608e25.s['12']++;switch(local.modeJs){case'browser':__cov_63fd5f1608e25.b['6'][0]++;__cov_63fd5f1608e25.s['13']++;local.testRunBrowser=function(event){__cov_63fd5f1608e25.f['4']++;__cov_63fd5f1608e25.s['14']++;if((__cov_63fd5f1608e25.b['8'][0]++,!event)||(__cov_63fd5f1608e25.b['8'][1]++,event)&&(__cov_63fd5f1608e25.b['8'][2]++,event.currentTarget)&&(__cov_63fd5f1608e25.b['8'][3]++,event.currentTarget.className)&&(__cov_63fd5f1608e25.b['8'][4]++,event.currentTarget.className.includes)&&(__cov_63fd5f1608e25.b['8'][5]++,event.currentTarget.className.includes('onreset'))){__cov_63fd5f1608e25.b['7'][0]++;__cov_63fd5f1608e25.s['15']++;Array.from(document.querySelectorAll('body > .resettable')).forEach(function(element){__cov_63fd5f1608e25.f['5']++;__cov_63fd5f1608e25.s['16']++;switch(element.tagName){case'INPUT':__cov_63fd5f1608e25.b['9'][0]++;case'TEXTAREA':__cov_63fd5f1608e25.b['9'][1]++;__cov_63fd5f1608e25.s['17']++;element.value='';__cov_63fd5f1608e25.s['18']++;break;default:__cov_63fd5f1608e25.b['9'][2]++;__cov_63fd5f1608e25.s['19']++;element.textContent='';}});}else{__cov_63fd5f1608e25.b['7'][1]++;}__cov_63fd5f1608e25.s['20']++;switch((__cov_63fd5f1608e25.b['11'][0]++,event)&&(__cov_63fd5f1608e25.b['11'][1]++,event.currentTarget)&&(__cov_63fd5f1608e25.b['11'][2]++,event.currentTarget.id)){case'testRunButton1':__cov_63fd5f1608e25.b['10'][0]++;__cov_63fd5f1608e25.s['21']++;if(document.querySelector('#testReportDiv1').style.display==='none'){__cov_63fd5f1608e25.b['12'][0]++;__cov_63fd5f1608e25.s['22']++;document.querySelector('#testReportDiv1').style.display='block';__cov_63fd5f1608e25.s['23']++;document.querySelector('#testRunButton1').textContent='hide internal test';__cov_63fd5f1608e25.s['24']++;local.modeTest=true;__cov_63fd5f1608e25.s['25']++;local.testRunDefault(local);}else{__cov_63fd5f1608e25.b['12'][1]++;__cov_63fd5f1608e25.s['26']++;document.querySelector('#testReportDiv1').style.display='none';__cov_63fd5f1608e25.s['27']++;document.querySelector('#testRunButton1').textContent='run internal test';}__cov_63fd5f1608e25.s['28']++;break;default:__cov_63fd5f1608e25.b['10'][1]++;__cov_63fd5f1608e25.s['29']++;break;}__cov_63fd5f1608e25.s['30']++;if((__cov_63fd5f1608e25.b['14'][0]++,document.querySelector('#inputTextareaEval1'))&&((__cov_63fd5f1608e25.b['14'][1]++,!event)||(__cov_63fd5f1608e25.b['14'][2]++,event)&&(__cov_63fd5f1608e25.b['14'][3]++,event.currentTarget)&&(__cov_63fd5f1608e25.b['14'][4]++,event.currentTarget.className)&&(__cov_63fd5f1608e25.b['14'][5]++,event.currentTarget.className.includes)&&(__cov_63fd5f1608e25.b['14'][6]++,event.currentTarget.className.includes('oneval')))){__cov_63fd5f1608e25.b['13'][0]++;__cov_63fd5f1608e25.s['31']++;try{__cov_63fd5f1608e25.s['32']++;eval(document.querySelector('#inputTextareaEval1').value);}catch(errorCaught){__cov_63fd5f1608e25.s['33']++;console.error(errorCaught);}}else{__cov_63fd5f1608e25.b['13'][1]++;}};__cov_63fd5f1608e25.s['34']++;['error','log'].forEach(function(key){__cov_63fd5f1608e25.f['6']++;__cov_63fd5f1608e25.s['35']++;console[key+'_original']=console[key];__cov_63fd5f1608e25.s['36']++;console[key]=function(){__cov_63fd5f1608e25.f['7']++;__cov_63fd5f1608e25.s['37']++;var element;__cov_63fd5f1608e25.s['38']++;console[key+'_original'].apply(console,arguments);__cov_63fd5f1608e25.s['39']++;element=document.querySelector('#outputTextareaStdout1');__cov_63fd5f1608e25.s['40']++;if(!element){__cov_63fd5f1608e25.b['15'][0]++;__cov_63fd5f1608e25.s['41']++;return;}else{__cov_63fd5f1608e25.b['15'][1]++;}__cov_63fd5f1608e25.s['42']++;element.value+=Array.from(arguments).map(function(arg){__cov_63fd5f1608e25.f['8']++;__cov_63fd5f1608e25.s['43']++;return typeof arg==='string'?(__cov_63fd5f1608e25.b['16'][0]++,arg):(__cov_63fd5f1608e25.b['16'][1]++,JSON.stringify(arg,null,4));}).join(' ')+'\n';__cov_63fd5f1608e25.s['44']++;element.scrollTop=element.scrollHeight;};});__cov_63fd5f1608e25.s['45']++;['change','click','keyup'].forEach(function(event){__cov_63fd5f1608e25.f['9']++;__cov_63fd5f1608e25.s['46']++;Array.from(document.querySelectorAll('.on'+event)).forEach(function(element){__cov_63fd5f1608e25.f['10']++;__cov_63fd5f1608e25.s['47']++;element.addEventListener(event,local.testRunBrowser);});});__cov_63fd5f1608e25.s['48']++;local.testRunBrowser();__cov_63fd5f1608e25.s['49']++;break;case'node':__cov_63fd5f1608e25.b['6'][1]++;__cov_63fd5f1608e25.s['50']++;module.exports=local;__cov_63fd5f1608e25.s['51']++;local.fs=require('fs');__cov_63fd5f1608e25.s['52']++;local.http=require('http');__cov_63fd5f1608e25.s['53']++;local.url=require('url');__cov_63fd5f1608e25.s['54']++;local.assetsDict=(__cov_63fd5f1608e25.b['17'][0]++,local.assetsDict)||(__cov_63fd5f1608e25.b['17'][1]++,{});__cov_63fd5f1608e25.s['55']++;local.assetsDict['/assets.index.template.html']='<!doctype html>\n<html lang="en">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>{{env.npm_package_name}} (v{{env.npm_package_version}})</title>\n<style>\n/*csslint\n    box-sizing: false,\n    universal-selector: false\n*/\n* {\n    box-sizing: border-box;\n}\nbody {\n    background: #dde;\n    font-family: Arial, Helvetica, sans-serif;\n    margin: 2rem;\n}\nbody > * {\n    margin-bottom: 1rem;\n}\n.utility2FooterDiv {\n    margin-top: 20px;\n    text-align: center;\n}\n</style>\n<style>\n/*csslint\n*/\ntextarea {\n    font-family: monospace;\n    height: 10rem;\n    width: 100%;\n}\ntextarea[readonly] {\n    background: #ddd;\n}\n</style>\n</head>\n<body>\n<!-- utility2-comment\n<div id="ajaxProgressDiv1" style="background: #d00; height: 2px; left: 0; margin: 0; padding: 0; position: fixed; top: 0; transition: background 0.5s, width 1.5s; width: 25%;"></div>\nutility2-comment -->\n<h1>\n<!-- utility2-comment\n    <a\n        {{#if env.npm_package_homepage}}\n        href="{{env.npm_package_homepage}}"\n        {{/if env.npm_package_homepage}}\n        target="_blank"\n    >\nutility2-comment -->\n        {{env.npm_package_name}} (v{{env.npm_package_version}})\n<!-- utility2-comment\n    </a>\nutility2-comment -->\n</h1>\n<h3>{{env.npm_package_description}}</h3>\n<!-- utility2-comment\n<h4><a download href="assets.app.js">download standalone app</a></h4>\n<button class="onclick onreset" id="testRunButton1">run internal test</button><br>\n<div id="testReportDiv1" style="display: none;"></div>\nutility2-comment -->\n\n\n\n<label>stderr and stdout</label>\n<textarea class="resettable" id="outputTextareaStdout1" readonly></textarea>\n<!-- utility2-comment\n{{#if isRollup}}\n<script src="assets.app.js"></script>\n{{#unless isRollup}}\nutility2-comment -->\n<script src="assets.utility2.rollup.js"></script>\n<script src="jsonp.utility2._stateInit?callback=window.utility2._stateInit"></script>\n<script src="assets.npmtest_gulp_load_plugins.rollup.js"></script>\n<script src="assets.example.js"></script>\n<script src="assets.test.js"></script>\n<!-- utility2-comment\n{{/if isRollup}}\nutility2-comment -->\n<div class="utility2FooterDiv">\n    [ this app was created with\n    <a href="https://github.com/kaizhu256/node-utility2" target="_blank">utility2</a>\n    ]\n</div>\n</body>\n</html>\n';__cov_63fd5f1608e25.s['56']++;if(local.templateRender){__cov_63fd5f1608e25.b['18'][0]++;__cov_63fd5f1608e25.s['57']++;local.assetsDict['/']=local.templateRender(local.assetsDict['/assets.index.template.html'],{env:local.objectSetDefault(local.env,{npm_package_description:'the greatest app in the world!',npm_package_name:'my-app',npm_package_nameAlias:'my_app',npm_package_version:'0.0.1'})});}else{__cov_63fd5f1608e25.b['18'][1]++;__cov_63fd5f1608e25.s['58']++;local.assetsDict['/']=local.assetsDict['/assets.index.template.html'].replace(/\{\{env\.(\w+?)\}\}/g,function(match0,match1){__cov_63fd5f1608e25.f['11']++;__cov_63fd5f1608e25.s['59']++;String(match0);__cov_63fd5f1608e25.s['60']++;switch(match1){case'npm_package_description':__cov_63fd5f1608e25.b['19'][0]++;__cov_63fd5f1608e25.s['61']++;return'the greatest app in the world!';case'npm_package_name':__cov_63fd5f1608e25.b['19'][1]++;__cov_63fd5f1608e25.s['62']++;return'my-app';case'npm_package_nameAlias':__cov_63fd5f1608e25.b['19'][2]++;__cov_63fd5f1608e25.s['63']++;return'my_app';case'npm_package_version':__cov_63fd5f1608e25.b['19'][3]++;__cov_63fd5f1608e25.s['64']++;return'0.0.1';}});}__cov_63fd5f1608e25.s['65']++;if((__cov_63fd5f1608e25.b['21'][0]++,local.global.utility2_rollup)||(__cov_63fd5f1608e25.b['21'][1]++,module!==require.main)){__cov_63fd5f1608e25.b['20'][0]++;__cov_63fd5f1608e25.s['66']++;break;}else{__cov_63fd5f1608e25.b['20'][1]++;}__cov_63fd5f1608e25.s['67']++;local.assetsDict['/assets.example.js']=(__cov_63fd5f1608e25.b['22'][0]++,local.assetsDict['/assets.example.js'])||(__cov_63fd5f1608e25.b['22'][1]++,local.fs.readFileSync(__filename,'utf8'));__cov_63fd5f1608e25.s['68']++;local.assetsDict['/assets.npmtest_gulp_load_plugins.rollup.js']=(__cov_63fd5f1608e25.b['23'][0]++,local.assetsDict['/assets.npmtest_gulp_load_plugins.rollup.js'])||(__cov_63fd5f1608e25.b['23'][1]++,local.fs.readFileSync(local.npmtest_gulp_load_plugins.__dirname+'/lib.npmtest_gulp_load_plugins.js','utf8').replace(/^#!/,'//'));__cov_63fd5f1608e25.s['69']++;local.assetsDict['/favicon.ico']=(__cov_63fd5f1608e25.b['24'][0]++,local.assetsDict['/favicon.ico'])||(__cov_63fd5f1608e25.b['24'][1]++,'');__cov_63fd5f1608e25.s['70']++;if(Number(process.env.npm_config_timeout_exit)){__cov_63fd5f1608e25.b['25'][0]++;__cov_63fd5f1608e25.s['71']++;setTimeout(process.exit,Number(process.env.npm_config_timeout_exit));}else{__cov_63fd5f1608e25.b['25'][1]++;}__cov_63fd5f1608e25.s['72']++;if(local.global.utility2_serverHttp1){__cov_63fd5f1608e25.b['26'][0]++;__cov_63fd5f1608e25.s['73']++;break;}else{__cov_63fd5f1608e25.b['26'][1]++;}__cov_63fd5f1608e25.s['74']++;process.env.PORT=(__cov_63fd5f1608e25.b['27'][0]++,process.env.PORT)||(__cov_63fd5f1608e25.b['27'][1]++,'8081');__cov_63fd5f1608e25.s['75']++;console.error('server starting on port '+process.env.PORT);__cov_63fd5f1608e25.s['76']++;local.http.createServer(function(request,response){__cov_63fd5f1608e25.f['12']++;__cov_63fd5f1608e25.s['77']++;request.urlParsed=local.url.parse(request.url);__cov_63fd5f1608e25.s['78']++;if(local.assetsDict[request.urlParsed.pathname]!==undefined){__cov_63fd5f1608e25.b['28'][0]++;__cov_63fd5f1608e25.s['79']++;response.end(local.assetsDict[request.urlParsed.pathname]);__cov_63fd5f1608e25.s['80']++;return;}else{__cov_63fd5f1608e25.b['28'][1]++;}__cov_63fd5f1608e25.s['81']++;response.statusCode=404;__cov_63fd5f1608e25.s['82']++;response.end();}).listen(process.env.PORT);__cov_63fd5f1608e25.s['83']++;break;}}());
+__cov_ac4266f7bf993 = __cov_ac4266f7bf993['/home/travis/build/npmtest/node-npmtest-gulp-load-plugins/example.js'];
+__cov_ac4266f7bf993.s['1']++;(function(){'use strict';__cov_ac4266f7bf993.f['1']++;__cov_ac4266f7bf993.s['2']++;var local;__cov_ac4266f7bf993.s['3']++;(function(){__cov_ac4266f7bf993.f['2']++;__cov_ac4266f7bf993.s['4']++;local={};__cov_ac4266f7bf993.s['5']++;local.modeJs=function(){__cov_ac4266f7bf993.f['3']++;__cov_ac4266f7bf993.s['6']++;try{__cov_ac4266f7bf993.s['7']++;return(__cov_ac4266f7bf993.b['1'][0]++,typeof navigator.userAgent==='string')&&(__cov_ac4266f7bf993.b['1'][1]++,typeof document.querySelector('body')==='object')&&(__cov_ac4266f7bf993.b['1'][2]++,typeof XMLHttpRequest.prototype.open==='function')&&(__cov_ac4266f7bf993.b['1'][3]++,'browser');}catch(errorCaughtBrowser){__cov_ac4266f7bf993.s['8']++;return(__cov_ac4266f7bf993.b['2'][0]++,module.exports)&&(__cov_ac4266f7bf993.b['2'][1]++,typeof process.versions.node==='string')&&(__cov_ac4266f7bf993.b['2'][2]++,typeof require('http').createServer==='function')&&(__cov_ac4266f7bf993.b['2'][3]++,'node');}}();__cov_ac4266f7bf993.s['9']++;local.global=local.modeJs==='browser'?(__cov_ac4266f7bf993.b['3'][0]++,window):(__cov_ac4266f7bf993.b['3'][1]++,global);__cov_ac4266f7bf993.s['10']++;local=(__cov_ac4266f7bf993.b['4'][0]++,local.global.utility2_rollup)||(__cov_ac4266f7bf993.b['4'][1]++,local.modeJs==='browser'?(__cov_ac4266f7bf993.b['5'][0]++,local.global.utility2_npmtest_gulp_load_plugins):(__cov_ac4266f7bf993.b['5'][1]++,global.utility2_moduleExports));__cov_ac4266f7bf993.s['11']++;local.global.local=local;}());__cov_ac4266f7bf993.s['12']++;switch(local.modeJs){case'browser':__cov_ac4266f7bf993.b['6'][0]++;__cov_ac4266f7bf993.s['13']++;local.testRunBrowser=function(event){__cov_ac4266f7bf993.f['4']++;__cov_ac4266f7bf993.s['14']++;if((__cov_ac4266f7bf993.b['8'][0]++,!event)||(__cov_ac4266f7bf993.b['8'][1]++,event)&&(__cov_ac4266f7bf993.b['8'][2]++,event.currentTarget)&&(__cov_ac4266f7bf993.b['8'][3]++,event.currentTarget.className)&&(__cov_ac4266f7bf993.b['8'][4]++,event.currentTarget.className.includes)&&(__cov_ac4266f7bf993.b['8'][5]++,event.currentTarget.className.includes('onreset'))){__cov_ac4266f7bf993.b['7'][0]++;__cov_ac4266f7bf993.s['15']++;Array.from(document.querySelectorAll('body > .resettable')).forEach(function(element){__cov_ac4266f7bf993.f['5']++;__cov_ac4266f7bf993.s['16']++;switch(element.tagName){case'INPUT':__cov_ac4266f7bf993.b['9'][0]++;case'TEXTAREA':__cov_ac4266f7bf993.b['9'][1]++;__cov_ac4266f7bf993.s['17']++;element.value='';__cov_ac4266f7bf993.s['18']++;break;default:__cov_ac4266f7bf993.b['9'][2]++;__cov_ac4266f7bf993.s['19']++;element.textContent='';}});}else{__cov_ac4266f7bf993.b['7'][1]++;}__cov_ac4266f7bf993.s['20']++;switch((__cov_ac4266f7bf993.b['11'][0]++,event)&&(__cov_ac4266f7bf993.b['11'][1]++,event.currentTarget)&&(__cov_ac4266f7bf993.b['11'][2]++,event.currentTarget.id)){case'testRunButton1':__cov_ac4266f7bf993.b['10'][0]++;__cov_ac4266f7bf993.s['21']++;if(document.querySelector('#testReportDiv1').style.display==='none'){__cov_ac4266f7bf993.b['12'][0]++;__cov_ac4266f7bf993.s['22']++;document.querySelector('#testReportDiv1').style.display='block';__cov_ac4266f7bf993.s['23']++;document.querySelector('#testRunButton1').textContent='hide internal test';__cov_ac4266f7bf993.s['24']++;local.modeTest=true;__cov_ac4266f7bf993.s['25']++;local.testRunDefault(local);}else{__cov_ac4266f7bf993.b['12'][1]++;__cov_ac4266f7bf993.s['26']++;document.querySelector('#testReportDiv1').style.display='none';__cov_ac4266f7bf993.s['27']++;document.querySelector('#testRunButton1').textContent='run internal test';}__cov_ac4266f7bf993.s['28']++;break;default:__cov_ac4266f7bf993.b['10'][1]++;__cov_ac4266f7bf993.s['29']++;break;}__cov_ac4266f7bf993.s['30']++;if((__cov_ac4266f7bf993.b['14'][0]++,document.querySelector('#inputTextareaEval1'))&&((__cov_ac4266f7bf993.b['14'][1]++,!event)||(__cov_ac4266f7bf993.b['14'][2]++,event)&&(__cov_ac4266f7bf993.b['14'][3]++,event.currentTarget)&&(__cov_ac4266f7bf993.b['14'][4]++,event.currentTarget.className)&&(__cov_ac4266f7bf993.b['14'][5]++,event.currentTarget.className.includes)&&(__cov_ac4266f7bf993.b['14'][6]++,event.currentTarget.className.includes('oneval')))){__cov_ac4266f7bf993.b['13'][0]++;__cov_ac4266f7bf993.s['31']++;try{__cov_ac4266f7bf993.s['32']++;eval(document.querySelector('#inputTextareaEval1').value);}catch(errorCaught){__cov_ac4266f7bf993.s['33']++;console.error(errorCaught);}}else{__cov_ac4266f7bf993.b['13'][1]++;}};__cov_ac4266f7bf993.s['34']++;['error','log'].forEach(function(key){__cov_ac4266f7bf993.f['6']++;__cov_ac4266f7bf993.s['35']++;console[key+'_original']=console[key];__cov_ac4266f7bf993.s['36']++;console[key]=function(){__cov_ac4266f7bf993.f['7']++;__cov_ac4266f7bf993.s['37']++;var element;__cov_ac4266f7bf993.s['38']++;console[key+'_original'].apply(console,arguments);__cov_ac4266f7bf993.s['39']++;element=document.querySelector('#outputTextareaStdout1');__cov_ac4266f7bf993.s['40']++;if(!element){__cov_ac4266f7bf993.b['15'][0]++;__cov_ac4266f7bf993.s['41']++;return;}else{__cov_ac4266f7bf993.b['15'][1]++;}__cov_ac4266f7bf993.s['42']++;element.value+=Array.from(arguments).map(function(arg){__cov_ac4266f7bf993.f['8']++;__cov_ac4266f7bf993.s['43']++;return typeof arg==='string'?(__cov_ac4266f7bf993.b['16'][0]++,arg):(__cov_ac4266f7bf993.b['16'][1]++,JSON.stringify(arg,null,4));}).join(' ')+'\n';__cov_ac4266f7bf993.s['44']++;element.scrollTop=element.scrollHeight;};});__cov_ac4266f7bf993.s['45']++;['change','click','keyup'].forEach(function(event){__cov_ac4266f7bf993.f['9']++;__cov_ac4266f7bf993.s['46']++;Array.from(document.querySelectorAll('.on'+event)).forEach(function(element){__cov_ac4266f7bf993.f['10']++;__cov_ac4266f7bf993.s['47']++;element.addEventListener(event,local.testRunBrowser);});});__cov_ac4266f7bf993.s['48']++;local.testRunBrowser();__cov_ac4266f7bf993.s['49']++;break;case'node':__cov_ac4266f7bf993.b['6'][1]++;__cov_ac4266f7bf993.s['50']++;module.exports=local;__cov_ac4266f7bf993.s['51']++;local.fs=require('fs');__cov_ac4266f7bf993.s['52']++;local.http=require('http');__cov_ac4266f7bf993.s['53']++;local.url=require('url');__cov_ac4266f7bf993.s['54']++;local.assetsDict=(__cov_ac4266f7bf993.b['17'][0]++,local.assetsDict)||(__cov_ac4266f7bf993.b['17'][1]++,{});__cov_ac4266f7bf993.s['55']++;local.assetsDict['/assets.index.template.html']='<!doctype html>\n<html lang="en">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>{{env.npm_package_name}} (v{{env.npm_package_version}})</title>\n<style>\n/*csslint\n    box-sizing: false,\n    universal-selector: false\n*/\n* {\n    box-sizing: border-box;\n}\nbody {\n    background: #dde;\n    font-family: Arial, Helvetica, sans-serif;\n    margin: 2rem;\n}\nbody > * {\n    margin-bottom: 1rem;\n}\n.utility2FooterDiv {\n    margin-top: 20px;\n    text-align: center;\n}\n</style>\n<style>\n/*csslint\n*/\ntextarea {\n    font-family: monospace;\n    height: 10rem;\n    width: 100%;\n}\ntextarea[readonly] {\n    background: #ddd;\n}\n</style>\n</head>\n<body>\n<!-- utility2-comment\n<div id="ajaxProgressDiv1" style="background: #d00; height: 2px; left: 0; margin: 0; padding: 0; position: fixed; top: 0; transition: background 0.5s, width 1.5s; width: 25%;"></div>\nutility2-comment -->\n<h1>\n<!-- utility2-comment\n    <a\n        {{#if env.npm_package_homepage}}\n        href="{{env.npm_package_homepage}}"\n        {{/if env.npm_package_homepage}}\n        target="_blank"\n    >\nutility2-comment -->\n        {{env.npm_package_name}} (v{{env.npm_package_version}})\n<!-- utility2-comment\n    </a>\nutility2-comment -->\n</h1>\n<h3>{{env.npm_package_description}}</h3>\n<!-- utility2-comment\n<h4><a download href="assets.app.js">download standalone app</a></h4>\n<button class="onclick onreset" id="testRunButton1">run internal test</button><br>\n<div id="testReportDiv1" style="display: none;"></div>\nutility2-comment -->\n\n\n\n<label>stderr and stdout</label>\n<textarea class="resettable" id="outputTextareaStdout1" readonly></textarea>\n<!-- utility2-comment\n{{#if isRollup}}\n<script src="assets.app.js"></script>\n{{#unless isRollup}}\nutility2-comment -->\n<script src="assets.utility2.rollup.js"></script>\n<script src="jsonp.utility2._stateInit?callback=window.utility2._stateInit"></script>\n<script src="assets.npmtest_gulp_load_plugins.rollup.js"></script>\n<script src="assets.example.js"></script>\n<script src="assets.test.js"></script>\n<!-- utility2-comment\n{{/if isRollup}}\nutility2-comment -->\n<div class="utility2FooterDiv">\n    [ this app was created with\n    <a href="https://github.com/kaizhu256/node-utility2" target="_blank">utility2</a>\n    ]\n</div>\n</body>\n</html>\n';__cov_ac4266f7bf993.s['56']++;if(local.templateRender){__cov_ac4266f7bf993.b['18'][0]++;__cov_ac4266f7bf993.s['57']++;local.assetsDict['/']=local.templateRender(local.assetsDict['/assets.index.template.html'],{env:local.objectSetDefault(local.env,{npm_package_description:'the greatest app in the world!',npm_package_name:'my-app',npm_package_nameAlias:'my_app',npm_package_version:'0.0.1'})});}else{__cov_ac4266f7bf993.b['18'][1]++;__cov_ac4266f7bf993.s['58']++;local.assetsDict['/']=local.assetsDict['/assets.index.template.html'].replace(/\{\{env\.(\w+?)\}\}/g,function(match0,match1){__cov_ac4266f7bf993.f['11']++;__cov_ac4266f7bf993.s['59']++;String(match0);__cov_ac4266f7bf993.s['60']++;switch(match1){case'npm_package_description':__cov_ac4266f7bf993.b['19'][0]++;__cov_ac4266f7bf993.s['61']++;return'the greatest app in the world!';case'npm_package_name':__cov_ac4266f7bf993.b['19'][1]++;__cov_ac4266f7bf993.s['62']++;return'my-app';case'npm_package_nameAlias':__cov_ac4266f7bf993.b['19'][2]++;__cov_ac4266f7bf993.s['63']++;return'my_app';case'npm_package_version':__cov_ac4266f7bf993.b['19'][3]++;__cov_ac4266f7bf993.s['64']++;return'0.0.1';}});}__cov_ac4266f7bf993.s['65']++;if((__cov_ac4266f7bf993.b['21'][0]++,local.global.utility2_rollup)||(__cov_ac4266f7bf993.b['21'][1]++,module!==require.main)){__cov_ac4266f7bf993.b['20'][0]++;__cov_ac4266f7bf993.s['66']++;break;}else{__cov_ac4266f7bf993.b['20'][1]++;}__cov_ac4266f7bf993.s['67']++;local.assetsDict['/assets.example.js']=(__cov_ac4266f7bf993.b['22'][0]++,local.assetsDict['/assets.example.js'])||(__cov_ac4266f7bf993.b['22'][1]++,local.fs.readFileSync(__filename,'utf8'));__cov_ac4266f7bf993.s['68']++;local.assetsDict['/assets.npmtest_gulp_load_plugins.rollup.js']=(__cov_ac4266f7bf993.b['23'][0]++,local.assetsDict['/assets.npmtest_gulp_load_plugins.rollup.js'])||(__cov_ac4266f7bf993.b['23'][1]++,local.fs.readFileSync(local.npmtest_gulp_load_plugins.__dirname+'/lib.npmtest_gulp_load_plugins.js','utf8').replace(/^#!/,'//'));__cov_ac4266f7bf993.s['69']++;local.assetsDict['/favicon.ico']=(__cov_ac4266f7bf993.b['24'][0]++,local.assetsDict['/favicon.ico'])||(__cov_ac4266f7bf993.b['24'][1]++,'');__cov_ac4266f7bf993.s['70']++;if(Number(process.env.npm_config_timeout_exit)){__cov_ac4266f7bf993.b['25'][0]++;__cov_ac4266f7bf993.s['71']++;setTimeout(process.exit,Number(process.env.npm_config_timeout_exit));}else{__cov_ac4266f7bf993.b['25'][1]++;}__cov_ac4266f7bf993.s['72']++;if(local.global.utility2_serverHttp1){__cov_ac4266f7bf993.b['26'][0]++;__cov_ac4266f7bf993.s['73']++;break;}else{__cov_ac4266f7bf993.b['26'][1]++;}__cov_ac4266f7bf993.s['74']++;process.env.PORT=(__cov_ac4266f7bf993.b['27'][0]++,process.env.PORT)||(__cov_ac4266f7bf993.b['27'][1]++,'8081');__cov_ac4266f7bf993.s['75']++;console.error('server starting on port '+process.env.PORT);__cov_ac4266f7bf993.s['76']++;local.http.createServer(function(request,response){__cov_ac4266f7bf993.f['12']++;__cov_ac4266f7bf993.s['77']++;request.urlParsed=local.url.parse(request.url);__cov_ac4266f7bf993.s['78']++;if(local.assetsDict[request.urlParsed.pathname]!==undefined){__cov_ac4266f7bf993.b['28'][0]++;__cov_ac4266f7bf993.s['79']++;response.end(local.assetsDict[request.urlParsed.pathname]);__cov_ac4266f7bf993.s['80']++;return;}else{__cov_ac4266f7bf993.b['28'][1]++;}__cov_ac4266f7bf993.s['81']++;response.statusCode=404;__cov_ac4266f7bf993.s['82']++;response.end();}).listen(process.env.PORT);__cov_ac4266f7bf993.s['83']++;break;}}());
 /* script-end /assets.example.js */
 
 
 
 /* script-begin /assets.test.js */
-var __cov_139a6ad83d4b5 = (Function('return this'))();
-if (!__cov_139a6ad83d4b5.__coverage__) { __cov_139a6ad83d4b5.__coverage__ = {}; }
-__cov_139a6ad83d4b5 = __cov_139a6ad83d4b5.__coverage__;
-if (!(__cov_139a6ad83d4b5['/home/travis/build/npmtest/node-npmtest-gulp-load-plugins/test.js'])) {
-   __cov_139a6ad83d4b5['/home/travis/build/npmtest/node-npmtest-gulp-load-plugins/test.js'] = {"path":"/home/travis/build/npmtest/node-npmtest-gulp-load-plugins/test.js","s":{"1":0,"2":0,"3":0,"4":0,"5":0,"6":0,"7":0,"8":0,"9":0,"10":0,"11":0,"12":0,"13":0,"14":0,"15":0,"16":0,"17":0,"18":0,"19":0,"20":0,"21":0,"22":0,"23":0,"24":0,"25":0,"26":0,"27":0,"28":0,"29":0,"30":0,"31":0,"32":0,"33":0,"34":0,"35":0,"36":0,"37":0,"38":0,"39":0,"40":0,"41":0,"42":0,"43":0,"44":0,"45":0,"46":0,"47":0,"48":0,"49":0,"50":0,"51":0,"52":0},"b":{"1":[0,0,0,0],"2":[0,0,0,0],"3":[0,0],"4":[0,0],"5":[0,0],"6":[0,0],"7":[0,0],"8":[0,0],"9":[0,0,0],"10":[0,0],"11":[0,0],"12":[0,0],"13":[0,0],"14":[0,0],"15":[0,0],"16":[0,0]},"f":{"1":0,"2":0,"3":0,"4":0,"5":0,"6":0,"7":0,"8":0,"9":0,"10":0,"11":0,"12":0},"fnMap":{"1":{"name":"(anonymous_1)","line":12,"loc":{"start":{"line":12,"column":1},"end":{"line":12,"column":13}}},"2":{"name":"(anonymous_2)","line":19,"loc":{"start":{"line":19,"column":5},"end":{"line":19,"column":17}}},"3":{"name":"(anonymous_3)","line":23,"loc":{"start":{"line":23,"column":24},"end":{"line":23,"column":36}}},"4":{"name":"(anonymous_4)","line":61,"loc":{"start":{"line":61,"column":5},"end":{"line":61,"column":17}}},"5":{"name":"(anonymous_5)","line":82,"loc":{"start":{"line":82,"column":5},"end":{"line":82,"column":17}}},"6":{"name":"(anonymous_6)","line":102,"loc":{"start":{"line":102,"column":83},"end":{"line":105,"column":10}},"skip":true},"7":{"name":"(anonymous_7)","line":113,"loc":{"start":{"line":113,"column":77},"end":{"line":116,"column":10}},"skip":true},"8":{"name":"(anonymous_8)","line":129,"loc":{"start":{"line":129,"column":12},"end":{"line":129,"column":40}},"skip":true},"9":{"name":"(anonymous_9)","line":137,"loc":{"start":{"line":137,"column":77},"end":{"line":140,"column":10}},"skip":true},"10":{"name":"(anonymous_10)","line":148,"loc":{"start":{"line":148,"column":83},"end":{"line":151,"column":10}},"skip":true},"11":{"name":"(anonymous_11)","line":159,"loc":{"start":{"line":159,"column":79},"end":{"line":162,"column":10}},"skip":true},"12":{"name":"(anonymous_12)","line":170,"loc":{"start":{"line":170,"column":75},"end":{"line":173,"column":10}},"skip":true}},"statementMap":{"1":{"start":{"line":12,"column":0},"end":{"line":185,"column":5}},"2":{"start":{"line":14,"column":4},"end":{"line":14,"column":14}},"3":{"start":{"line":19,"column":4},"end":{"line":56,"column":9}},"4":{"start":{"line":21,"column":8},"end":{"line":21,"column":19}},"5":{"start":{"line":23,"column":8},"end":{"line":35,"column":13}},"6":{"start":{"line":24,"column":12},"end":{"line":34,"column":13}},"7":{"start":{"line":25,"column":16},"end":{"line":28,"column":30}},"8":{"start":{"line":30,"column":16},"end":{"line":33,"column":27}},"9":{"start":{"line":37,"column":8},"end":{"line":39,"column":21}},"10":{"start":{"line":40,"column":8},"end":{"line":53,"column":9}},"11":{"start":{"line":43,"column":12},"end":{"line":46,"column":14}},"12":{"start":{"line":47,"column":12},"end":{"line":47,"column":18}},"13":{"start":{"line":50,"column":12},"end":{"line":51,"column":46}},"14":{"start":{"line":52,"column":12},"end":{"line":52,"column":18}},"15":{"start":{"line":55,"column":8},"end":{"line":55,"column":35}},"16":{"start":{"line":61,"column":4},"end":{"line":63,"column":9}},"17":{"start":{"line":62,"column":8},"end":{"line":62,"column":15}},"18":{"start":{"line":64,"column":4},"end":{"line":77,"column":5}},"19":{"start":{"line":70,"column":8},"end":{"line":70,"column":14}},"20":{"start":{"line":76,"column":8},"end":{"line":76,"column":14}},"21":{"start":{"line":82,"column":4},"end":{"line":84,"column":9}},"22":{"start":{"line":83,"column":8},"end":{"line":83,"column":15}},"23":{"start":{"line":85,"column":4},"end":{"line":184,"column":5}},"24":{"start":{"line":92,"column":8},"end":{"line":94,"column":63}},"25":{"start":{"line":95,"column":8},"end":{"line":95,"column":14}},"26":{"start":{"line":102,"column":8},"end":{"line":111,"column":10},"skip":true},"27":{"start":{"line":109,"column":12},"end":{"line":109,"column":55},"skip":true},"28":{"start":{"line":110,"column":12},"end":{"line":110,"column":48},"skip":true},"29":{"start":{"line":113,"column":8},"end":{"line":126,"column":10},"skip":true},"30":{"start":{"line":120,"column":12},"end":{"line":120,"column":76},"skip":true},"31":{"start":{"line":121,"column":12},"end":{"line":121,"column":73},"skip":true},"32":{"start":{"line":122,"column":12},"end":{"line":122,"column":74},"skip":true},"33":{"start":{"line":123,"column":12},"end":{"line":123,"column":79},"skip":true},"34":{"start":{"line":124,"column":12},"end":{"line":124,"column":25},"skip":true},"35":{"start":{"line":125,"column":12},"end":{"line":125,"column":45},"skip":true},"36":{"start":{"line":128,"column":8},"end":{"line":135,"column":14},"skip":true},"37":{"start":{"line":133,"column":16},"end":{"line":133,"column":29},"skip":true},"38":{"start":{"line":134,"column":16},"end":{"line":134,"column":55},"skip":true},"39":{"start":{"line":137,"column":8},"end":{"line":146,"column":10},"skip":true},"40":{"start":{"line":144,"column":12},"end":{"line":144,"column":25},"skip":true},"41":{"start":{"line":145,"column":12},"end":{"line":145,"column":45},"skip":true},"42":{"start":{"line":148,"column":8},"end":{"line":157,"column":10},"skip":true},"43":{"start":{"line":155,"column":12},"end":{"line":155,"column":25},"skip":true},"44":{"start":{"line":156,"column":12},"end":{"line":156,"column":48},"skip":true},"45":{"start":{"line":159,"column":8},"end":{"line":168,"column":10},"skip":true},"46":{"start":{"line":166,"column":12},"end":{"line":166,"column":25},"skip":true},"47":{"start":{"line":167,"column":12},"end":{"line":167,"column":46},"skip":true},"48":{"start":{"line":170,"column":8},"end":{"line":179,"column":10},"skip":true},"49":{"start":{"line":177,"column":12},"end":{"line":177,"column":94},"skip":true},"50":{"start":{"line":178,"column":12},"end":{"line":178,"column":48},"skip":true},"51":{"start":{"line":182,"column":8},"end":{"line":182,"column":35},"skip":true},"52":{"start":{"line":183,"column":8},"end":{"line":183,"column":14},"skip":true}},"branchMap":{"1":{"line":25,"type":"binary-expr","locations":[{"start":{"line":25,"column":23},"end":{"line":25,"column":62}},{"start":{"line":26,"column":20},"end":{"line":26,"column":70}},{"start":{"line":27,"column":20},"end":{"line":27,"column":71}},{"start":{"line":28,"column":20},"end":{"line":28,"column":29}}]},"2":{"line":30,"type":"binary-expr","locations":[{"start":{"line":30,"column":23},"end":{"line":30,"column":37}},{"start":{"line":31,"column":20},"end":{"line":31,"column":61}},{"start":{"line":32,"column":20},"end":{"line":32,"column":70}},{"start":{"line":33,"column":20},"end":{"line":33,"column":26}}]},"3":{"line":37,"type":"cond-expr","locations":[{"start":{"line":38,"column":14},"end":{"line":38,"column":20}},{"start":{"line":39,"column":14},"end":{"line":39,"column":20}}]},"4":{"line":40,"type":"switch","locations":[{"start":{"line":42,"column":8},"end":{"line":47,"column":18}},{"start":{"line":49,"column":8},"end":{"line":52,"column":18}}]},"5":{"line":44,"type":"binary-expr","locations":[{"start":{"line":44,"column":16},"end":{"line":44,"column":44}},{"start":{"line":44,"column":48},"end":{"line":44,"column":66}}]},"6":{"line":50,"type":"binary-expr","locations":[{"start":{"line":50,"column":21},"end":{"line":50,"column":49}},{"start":{"line":50,"column":53},"end":{"line":50,"column":72}}]},"7":{"line":64,"type":"switch","locations":[{"start":{"line":69,"column":4},"end":{"line":70,"column":14}},{"start":{"line":75,"column":4},"end":{"line":76,"column":14}}]},"8":{"line":85,"type":"switch","locations":[{"start":{"line":90,"column":4},"end":{"line":95,"column":14}},{"start":{"line":101,"column":4},"end":{"line":183,"column":14},"skip":true}]},"9":{"line":92,"type":"binary-expr","locations":[{"start":{"line":92,"column":18},"end":{"line":92,"column":32}},{"start":{"line":93,"column":12},"end":{"line":93,"column":53}},{"start":{"line":94,"column":12},"end":{"line":94,"column":61}}]},"10":{"line":102,"type":"binary-expr","locations":[{"start":{"line":102,"column":45},"end":{"line":102,"column":79},"skip":true},{"start":{"line":102,"column":83},"end":{"line":111,"column":9},"skip":true}]},"11":{"line":113,"type":"binary-expr","locations":[{"start":{"line":113,"column":42},"end":{"line":113,"column":73},"skip":true},{"start":{"line":113,"column":77},"end":{"line":126,"column":9},"skip":true}]},"12":{"line":128,"type":"binary-expr","locations":[{"start":{"line":128,"column":48},"end":{"line":128,"column":85},"skip":true},{"start":{"line":129,"column":12},"end":{"line":135,"column":13},"skip":true}]},"13":{"line":137,"type":"binary-expr","locations":[{"start":{"line":137,"column":42},"end":{"line":137,"column":73},"skip":true},{"start":{"line":137,"column":77},"end":{"line":146,"column":9},"skip":true}]},"14":{"line":148,"type":"binary-expr","locations":[{"start":{"line":148,"column":45},"end":{"line":148,"column":79},"skip":true},{"start":{"line":148,"column":83},"end":{"line":157,"column":9},"skip":true}]},"15":{"line":159,"type":"binary-expr","locations":[{"start":{"line":159,"column":43},"end":{"line":159,"column":75},"skip":true},{"start":{"line":159,"column":79},"end":{"line":168,"column":9},"skip":true}]},"16":{"line":170,"type":"binary-expr","locations":[{"start":{"line":170,"column":41},"end":{"line":170,"column":71},"skip":true},{"start":{"line":170,"column":75},"end":{"line":179,"column":9},"skip":true}]}},"code":["/* istanbul instrument in package npmtest_gulp_load_plugins */","/*jslint","    bitwise: true,","    browser: true,","    maxerr: 8,","    maxlen: 96,","    node: true,","    nomen: true,","    regexp: true,","    stupid: true","*/","(function () {","    'use strict';","    var local;","","","","    // run shared js-env code - pre-init","    (function () {","        // init local","        local = {};","        // init modeJs","        local.modeJs = (function () {","            try {","                return typeof navigator.userAgent === 'string' &&","                    typeof document.querySelector('body') === 'object' &&","                    typeof XMLHttpRequest.prototype.open === 'function' &&","                    'browser';","            } catch (errorCaughtBrowser) {","                return module.exports &&","                    typeof process.versions.node === 'string' &&","                    typeof require('http').createServer === 'function' &&","                    'node';","            }","        }());","        // init global","        local.global = local.modeJs === 'browser'","            ? window","            : global;","        switch (local.modeJs) {","        // re-init local from window.local","        case 'browser':","            local = local.global.utility2.objectSetDefault(","                local.global.utility2_rollup || local.global.local,","                local.global.utility2","            );","            break;","        // re-init local from example.js","        case 'node':","            local = (local.global.utility2_rollup || require('utility2'))","                .requireExampleJsFromReadme();","            break;","        }","        // export local","        local.global.local = local;","    }());","","","","    // run shared js-env code - function","    (function () {","        return;","    }());","    switch (local.modeJs) {","","","","    // run browser js-env code - function","    case 'browser':","        break;","","","","    // run node js-env code - function","    case 'node':","        break;","    }","","","","    // run shared js-env code - post-init","    (function () {","        return;","    }());","    switch (local.modeJs) {","","","","    // run browser js-env code - post-init","    case 'browser':","        // run tests","        local.nop(local.modeTest &&","            document.querySelector('#testRunButton1') &&","            document.querySelector('#testRunButton1').click());","        break;","","","","    // run node js-env code - post-init","    /* istanbul ignore next */","    case 'node':","        local.testCase_buildApidoc_default = local.testCase_buildApidoc_default || function (","            options,","            onError","        ) {","        /*","         * this function will test buildApidoc's default handling-behavior-behavior","         */","            options = { modulePathList: module.paths };","            local.buildApidoc(options, onError);","        };","","        local.testCase_buildApp_default = local.testCase_buildApp_default || function (","            options,","            onError","        ) {","        /*","         * this function will test buildApp's default handling-behavior-behavior","         */","            local.testCase_buildReadme_default(options, local.onErrorThrow);","            local.testCase_buildLib_default(options, local.onErrorThrow);","            local.testCase_buildTest_default(options, local.onErrorThrow);","            local.testCase_buildCustomOrg_default(options, local.onErrorThrow);","            options = [];","            local.buildApp(options, onError);","        };","","        local.testCase_buildCustomOrg_default = local.testCase_buildCustomOrg_default ||","            function (options, onError) {","            /*","             * this function will test buildCustomOrg's default handling-behavior","             */","                options = {};","                local.buildCustomOrg(options, onError);","            };","","        local.testCase_buildLib_default = local.testCase_buildLib_default || function (","            options,","            onError","        ) {","        /*","         * this function will test buildLib's default handling-behavior","         */","            options = {};","            local.buildLib(options, onError);","        };","","        local.testCase_buildReadme_default = local.testCase_buildReadme_default || function (","            options,","            onError","        ) {","        /*","         * this function will test buildReadme's default handling-behavior-behavior","         */","            options = {};","            local.buildReadme(options, onError);","        };","","        local.testCase_buildTest_default = local.testCase_buildTest_default || function (","            options,","            onError","        ) {","        /*","         * this function will test buildTest's default handling-behavior","         */","            options = {};","            local.buildTest(options, onError);","        };","","        local.testCase_webpage_default = local.testCase_webpage_default || function (","            options,","            onError","        ) {","        /*","         * this function will test webpage's default handling-behavior","         */","            options = { modeCoverageMerge: true, url: local.serverLocalHost + '?modeTest=1' };","            local.browserTest(options, onError);","        };","","        // run test-server","        local.testRunServer(local);","        break;","    }","}());",""]};
+var __cov_3ee0b652b70ff = (Function('return this'))();
+if (!__cov_3ee0b652b70ff.__coverage__) { __cov_3ee0b652b70ff.__coverage__ = {}; }
+__cov_3ee0b652b70ff = __cov_3ee0b652b70ff.__coverage__;
+if (!(__cov_3ee0b652b70ff['/home/travis/build/npmtest/node-npmtest-gulp-load-plugins/test.js'])) {
+   __cov_3ee0b652b70ff['/home/travis/build/npmtest/node-npmtest-gulp-load-plugins/test.js'] = {"path":"/home/travis/build/npmtest/node-npmtest-gulp-load-plugins/test.js","s":{"1":0,"2":0,"3":0,"4":0,"5":0,"6":0,"7":0,"8":0,"9":0,"10":0,"11":0,"12":0,"13":0,"14":0,"15":0,"16":0,"17":0,"18":0,"19":0,"20":0,"21":0,"22":0,"23":0,"24":0,"25":0,"26":0,"27":0,"28":0,"29":0,"30":0,"31":0,"32":0,"33":0,"34":0,"35":0,"36":0,"37":0,"38":0,"39":0,"40":0,"41":0,"42":0,"43":0,"44":0,"45":0,"46":0,"47":0,"48":0,"49":0,"50":0,"51":0,"52":0,"53":0,"54":0},"b":{"1":[0,0,0,0],"2":[0,0,0,0],"3":[0,0],"4":[0,0],"5":[0,0],"6":[0,0],"7":[0,0],"8":[0,0],"9":[0,0],"10":[0,0,0],"11":[0,0],"12":[0,0],"13":[0,0],"14":[0,0],"15":[0,0],"16":[0,0],"17":[0,0]},"f":{"1":0,"2":0,"3":0,"4":0,"5":0,"6":0,"7":0,"8":0,"9":0,"10":0,"11":0,"12":0,"13":0},"fnMap":{"1":{"name":"(anonymous_1)","line":12,"loc":{"start":{"line":12,"column":1},"end":{"line":12,"column":13}}},"2":{"name":"(anonymous_2)","line":19,"loc":{"start":{"line":19,"column":5},"end":{"line":19,"column":17}}},"3":{"name":"(anonymous_3)","line":23,"loc":{"start":{"line":23,"column":24},"end":{"line":23,"column":36}}},"4":{"name":"(anonymous_4)","line":61,"loc":{"start":{"line":61,"column":5},"end":{"line":61,"column":17}}},"5":{"name":"(anonymous_5)","line":82,"loc":{"start":{"line":82,"column":5},"end":{"line":82,"column":17}}},"6":{"name":"(anonymous_6)","line":91,"loc":{"start":{"line":91,"column":77},"end":{"line":94,"column":10}}},"7":{"name":"(anonymous_7)","line":112,"loc":{"start":{"line":112,"column":83},"end":{"line":115,"column":10}},"skip":true},"8":{"name":"(anonymous_8)","line":123,"loc":{"start":{"line":123,"column":77},"end":{"line":126,"column":10}},"skip":true},"9":{"name":"(anonymous_9)","line":139,"loc":{"start":{"line":139,"column":12},"end":{"line":139,"column":40}},"skip":true},"10":{"name":"(anonymous_10)","line":147,"loc":{"start":{"line":147,"column":77},"end":{"line":150,"column":10}},"skip":true},"11":{"name":"(anonymous_11)","line":158,"loc":{"start":{"line":158,"column":83},"end":{"line":161,"column":10}},"skip":true},"12":{"name":"(anonymous_12)","line":169,"loc":{"start":{"line":169,"column":79},"end":{"line":172,"column":10}},"skip":true},"13":{"name":"(anonymous_13)","line":180,"loc":{"start":{"line":180,"column":75},"end":{"line":183,"column":10}},"skip":true}},"statementMap":{"1":{"start":{"line":12,"column":0},"end":{"line":195,"column":5}},"2":{"start":{"line":14,"column":4},"end":{"line":14,"column":14}},"3":{"start":{"line":19,"column":4},"end":{"line":56,"column":9}},"4":{"start":{"line":21,"column":8},"end":{"line":21,"column":19}},"5":{"start":{"line":23,"column":8},"end":{"line":35,"column":13}},"6":{"start":{"line":24,"column":12},"end":{"line":34,"column":13}},"7":{"start":{"line":25,"column":16},"end":{"line":28,"column":30}},"8":{"start":{"line":30,"column":16},"end":{"line":33,"column":27}},"9":{"start":{"line":37,"column":8},"end":{"line":39,"column":21}},"10":{"start":{"line":40,"column":8},"end":{"line":53,"column":9}},"11":{"start":{"line":43,"column":12},"end":{"line":46,"column":14}},"12":{"start":{"line":47,"column":12},"end":{"line":47,"column":18}},"13":{"start":{"line":50,"column":12},"end":{"line":51,"column":46}},"14":{"start":{"line":52,"column":12},"end":{"line":52,"column":18}},"15":{"start":{"line":55,"column":8},"end":{"line":55,"column":35}},"16":{"start":{"line":61,"column":4},"end":{"line":63,"column":9}},"17":{"start":{"line":62,"column":8},"end":{"line":62,"column":15}},"18":{"start":{"line":64,"column":4},"end":{"line":77,"column":5}},"19":{"start":{"line":70,"column":8},"end":{"line":70,"column":14}},"20":{"start":{"line":76,"column":8},"end":{"line":76,"column":14}},"21":{"start":{"line":82,"column":4},"end":{"line":84,"column":9}},"22":{"start":{"line":83,"column":8},"end":{"line":83,"column":15}},"23":{"start":{"line":85,"column":4},"end":{"line":194,"column":5}},"24":{"start":{"line":91,"column":8},"end":{"line":99,"column":10}},"25":{"start":{"line":98,"column":12},"end":{"line":98,"column":35}},"26":{"start":{"line":102,"column":8},"end":{"line":104,"column":63}},"27":{"start":{"line":105,"column":8},"end":{"line":105,"column":14}},"28":{"start":{"line":112,"column":8},"end":{"line":121,"column":10},"skip":true},"29":{"start":{"line":119,"column":12},"end":{"line":119,"column":55},"skip":true},"30":{"start":{"line":120,"column":12},"end":{"line":120,"column":48},"skip":true},"31":{"start":{"line":123,"column":8},"end":{"line":136,"column":10},"skip":true},"32":{"start":{"line":130,"column":12},"end":{"line":130,"column":76},"skip":true},"33":{"start":{"line":131,"column":12},"end":{"line":131,"column":73},"skip":true},"34":{"start":{"line":132,"column":12},"end":{"line":132,"column":74},"skip":true},"35":{"start":{"line":133,"column":12},"end":{"line":133,"column":79},"skip":true},"36":{"start":{"line":134,"column":12},"end":{"line":134,"column":25},"skip":true},"37":{"start":{"line":135,"column":12},"end":{"line":135,"column":45},"skip":true},"38":{"start":{"line":138,"column":8},"end":{"line":145,"column":14},"skip":true},"39":{"start":{"line":143,"column":16},"end":{"line":143,"column":29},"skip":true},"40":{"start":{"line":144,"column":16},"end":{"line":144,"column":55},"skip":true},"41":{"start":{"line":147,"column":8},"end":{"line":156,"column":10},"skip":true},"42":{"start":{"line":154,"column":12},"end":{"line":154,"column":25},"skip":true},"43":{"start":{"line":155,"column":12},"end":{"line":155,"column":45},"skip":true},"44":{"start":{"line":158,"column":8},"end":{"line":167,"column":10},"skip":true},"45":{"start":{"line":165,"column":12},"end":{"line":165,"column":25},"skip":true},"46":{"start":{"line":166,"column":12},"end":{"line":166,"column":48},"skip":true},"47":{"start":{"line":169,"column":8},"end":{"line":178,"column":10},"skip":true},"48":{"start":{"line":176,"column":12},"end":{"line":176,"column":25},"skip":true},"49":{"start":{"line":177,"column":12},"end":{"line":177,"column":46},"skip":true},"50":{"start":{"line":180,"column":8},"end":{"line":189,"column":10},"skip":true},"51":{"start":{"line":187,"column":12},"end":{"line":187,"column":94},"skip":true},"52":{"start":{"line":188,"column":12},"end":{"line":188,"column":48},"skip":true},"53":{"start":{"line":192,"column":8},"end":{"line":192,"column":35},"skip":true},"54":{"start":{"line":193,"column":8},"end":{"line":193,"column":14},"skip":true}},"branchMap":{"1":{"line":25,"type":"binary-expr","locations":[{"start":{"line":25,"column":23},"end":{"line":25,"column":62}},{"start":{"line":26,"column":20},"end":{"line":26,"column":70}},{"start":{"line":27,"column":20},"end":{"line":27,"column":71}},{"start":{"line":28,"column":20},"end":{"line":28,"column":29}}]},"2":{"line":30,"type":"binary-expr","locations":[{"start":{"line":30,"column":23},"end":{"line":30,"column":37}},{"start":{"line":31,"column":20},"end":{"line":31,"column":61}},{"start":{"line":32,"column":20},"end":{"line":32,"column":70}},{"start":{"line":33,"column":20},"end":{"line":33,"column":26}}]},"3":{"line":37,"type":"cond-expr","locations":[{"start":{"line":38,"column":14},"end":{"line":38,"column":20}},{"start":{"line":39,"column":14},"end":{"line":39,"column":20}}]},"4":{"line":40,"type":"switch","locations":[{"start":{"line":42,"column":8},"end":{"line":47,"column":18}},{"start":{"line":49,"column":8},"end":{"line":52,"column":18}}]},"5":{"line":44,"type":"binary-expr","locations":[{"start":{"line":44,"column":16},"end":{"line":44,"column":44}},{"start":{"line":44,"column":48},"end":{"line":44,"column":66}}]},"6":{"line":50,"type":"binary-expr","locations":[{"start":{"line":50,"column":21},"end":{"line":50,"column":49}},{"start":{"line":50,"column":53},"end":{"line":50,"column":72}}]},"7":{"line":64,"type":"switch","locations":[{"start":{"line":69,"column":4},"end":{"line":70,"column":14}},{"start":{"line":75,"column":4},"end":{"line":76,"column":14}}]},"8":{"line":85,"type":"switch","locations":[{"start":{"line":90,"column":4},"end":{"line":105,"column":14}},{"start":{"line":111,"column":4},"end":{"line":193,"column":14},"skip":true}]},"9":{"line":91,"type":"binary-expr","locations":[{"start":{"line":91,"column":42},"end":{"line":91,"column":73}},{"start":{"line":91,"column":77},"end":{"line":99,"column":9}}]},"10":{"line":102,"type":"binary-expr","locations":[{"start":{"line":102,"column":18},"end":{"line":102,"column":32}},{"start":{"line":103,"column":12},"end":{"line":103,"column":53}},{"start":{"line":104,"column":12},"end":{"line":104,"column":61}}]},"11":{"line":112,"type":"binary-expr","locations":[{"start":{"line":112,"column":45},"end":{"line":112,"column":79},"skip":true},{"start":{"line":112,"column":83},"end":{"line":121,"column":9},"skip":true}]},"12":{"line":123,"type":"binary-expr","locations":[{"start":{"line":123,"column":42},"end":{"line":123,"column":73},"skip":true},{"start":{"line":123,"column":77},"end":{"line":136,"column":9},"skip":true}]},"13":{"line":138,"type":"binary-expr","locations":[{"start":{"line":138,"column":48},"end":{"line":138,"column":85},"skip":true},{"start":{"line":139,"column":12},"end":{"line":145,"column":13},"skip":true}]},"14":{"line":147,"type":"binary-expr","locations":[{"start":{"line":147,"column":42},"end":{"line":147,"column":73},"skip":true},{"start":{"line":147,"column":77},"end":{"line":156,"column":9},"skip":true}]},"15":{"line":158,"type":"binary-expr","locations":[{"start":{"line":158,"column":45},"end":{"line":158,"column":79},"skip":true},{"start":{"line":158,"column":83},"end":{"line":167,"column":9},"skip":true}]},"16":{"line":169,"type":"binary-expr","locations":[{"start":{"line":169,"column":43},"end":{"line":169,"column":75},"skip":true},{"start":{"line":169,"column":79},"end":{"line":178,"column":9},"skip":true}]},"17":{"line":180,"type":"binary-expr","locations":[{"start":{"line":180,"column":41},"end":{"line":180,"column":71},"skip":true},{"start":{"line":180,"column":75},"end":{"line":189,"column":9},"skip":true}]}},"code":["/* istanbul instrument in package npmtest_gulp_load_plugins */","/*jslint","    bitwise: true,","    browser: true,","    maxerr: 8,","    maxlen: 96,","    node: true,","    nomen: true,","    regexp: true,","    stupid: true","*/","(function () {","    'use strict';","    var local;","","","","    // run shared js-env code - pre-init","    (function () {","        // init local","        local = {};","        // init modeJs","        local.modeJs = (function () {","            try {","                return typeof navigator.userAgent === 'string' &&","                    typeof document.querySelector('body') === 'object' &&","                    typeof XMLHttpRequest.prototype.open === 'function' &&","                    'browser';","            } catch (errorCaughtBrowser) {","                return module.exports &&","                    typeof process.versions.node === 'string' &&","                    typeof require('http').createServer === 'function' &&","                    'node';","            }","        }());","        // init global","        local.global = local.modeJs === 'browser'","            ? window","            : global;","        switch (local.modeJs) {","        // re-init local from window.local","        case 'browser':","            local = local.global.utility2.objectSetDefault(","                local.global.utility2_rollup || local.global.local,","                local.global.utility2","            );","            break;","        // re-init local from example.js","        case 'node':","            local = (local.global.utility2_rollup || require('utility2'))","                .requireExampleJsFromReadme();","            break;","        }","        // export local","        local.global.local = local;","    }());","","","","    // run shared js-env code - function","    (function () {","        return;","    }());","    switch (local.modeJs) {","","","","    // run browser js-env code - function","    case 'browser':","        break;","","","","    // run node js-env code - function","    case 'node':","        break;","    }","","","","    // run shared js-env code - post-init","    (function () {","        return;","    }());","    switch (local.modeJs) {","","","","    // run browser js-env code - post-init","    case 'browser':","        local.testCase_browser_nullCase = local.testCase_browser_nullCase || function (","            options,","            onError","        ) {","        /*","         * this function will test browsers's null-case handling-behavior-behavior","         */","            onError(null, options);","        };","","        // run tests","        local.nop(local.modeTest &&","            document.querySelector('#testRunButton1') &&","            document.querySelector('#testRunButton1').click());","        break;","","","","    // run node js-env code - post-init","    /* istanbul ignore next */","    case 'node':","        local.testCase_buildApidoc_default = local.testCase_buildApidoc_default || function (","            options,","            onError","        ) {","        /*","         * this function will test buildApidoc's default handling-behavior-behavior","         */","            options = { modulePathList: module.paths };","            local.buildApidoc(options, onError);","        };","","        local.testCase_buildApp_default = local.testCase_buildApp_default || function (","            options,","            onError","        ) {","        /*","         * this function will test buildApp's default handling-behavior-behavior","         */","            local.testCase_buildReadme_default(options, local.onErrorThrow);","            local.testCase_buildLib_default(options, local.onErrorThrow);","            local.testCase_buildTest_default(options, local.onErrorThrow);","            local.testCase_buildCustomOrg_default(options, local.onErrorThrow);","            options = [];","            local.buildApp(options, onError);","        };","","        local.testCase_buildCustomOrg_default = local.testCase_buildCustomOrg_default ||","            function (options, onError) {","            /*","             * this function will test buildCustomOrg's default handling-behavior","             */","                options = {};","                local.buildCustomOrg(options, onError);","            };","","        local.testCase_buildLib_default = local.testCase_buildLib_default || function (","            options,","            onError","        ) {","        /*","         * this function will test buildLib's default handling-behavior","         */","            options = {};","            local.buildLib(options, onError);","        };","","        local.testCase_buildReadme_default = local.testCase_buildReadme_default || function (","            options,","            onError","        ) {","        /*","         * this function will test buildReadme's default handling-behavior-behavior","         */","            options = {};","            local.buildReadme(options, onError);","        };","","        local.testCase_buildTest_default = local.testCase_buildTest_default || function (","            options,","            onError","        ) {","        /*","         * this function will test buildTest's default handling-behavior","         */","            options = {};","            local.buildTest(options, onError);","        };","","        local.testCase_webpage_default = local.testCase_webpage_default || function (","            options,","            onError","        ) {","        /*","         * this function will test webpage's default handling-behavior","         */","            options = { modeCoverageMerge: true, url: local.serverLocalHost + '?modeTest=1' };","            local.browserTest(options, onError);","        };","","        // run test-server","        local.testRunServer(local);","        break;","    }","}());",""]};
 }
-__cov_139a6ad83d4b5 = __cov_139a6ad83d4b5['/home/travis/build/npmtest/node-npmtest-gulp-load-plugins/test.js'];
-__cov_139a6ad83d4b5.s['1']++;(function(){'use strict';__cov_139a6ad83d4b5.f['1']++;__cov_139a6ad83d4b5.s['2']++;var local;__cov_139a6ad83d4b5.s['3']++;(function(){__cov_139a6ad83d4b5.f['2']++;__cov_139a6ad83d4b5.s['4']++;local={};__cov_139a6ad83d4b5.s['5']++;local.modeJs=function(){__cov_139a6ad83d4b5.f['3']++;__cov_139a6ad83d4b5.s['6']++;try{__cov_139a6ad83d4b5.s['7']++;return(__cov_139a6ad83d4b5.b['1'][0]++,typeof navigator.userAgent==='string')&&(__cov_139a6ad83d4b5.b['1'][1]++,typeof document.querySelector('body')==='object')&&(__cov_139a6ad83d4b5.b['1'][2]++,typeof XMLHttpRequest.prototype.open==='function')&&(__cov_139a6ad83d4b5.b['1'][3]++,'browser');}catch(errorCaughtBrowser){__cov_139a6ad83d4b5.s['8']++;return(__cov_139a6ad83d4b5.b['2'][0]++,module.exports)&&(__cov_139a6ad83d4b5.b['2'][1]++,typeof process.versions.node==='string')&&(__cov_139a6ad83d4b5.b['2'][2]++,typeof require('http').createServer==='function')&&(__cov_139a6ad83d4b5.b['2'][3]++,'node');}}();__cov_139a6ad83d4b5.s['9']++;local.global=local.modeJs==='browser'?(__cov_139a6ad83d4b5.b['3'][0]++,window):(__cov_139a6ad83d4b5.b['3'][1]++,global);__cov_139a6ad83d4b5.s['10']++;switch(local.modeJs){case'browser':__cov_139a6ad83d4b5.b['4'][0]++;__cov_139a6ad83d4b5.s['11']++;local=local.global.utility2.objectSetDefault((__cov_139a6ad83d4b5.b['5'][0]++,local.global.utility2_rollup)||(__cov_139a6ad83d4b5.b['5'][1]++,local.global.local),local.global.utility2);__cov_139a6ad83d4b5.s['12']++;break;case'node':__cov_139a6ad83d4b5.b['4'][1]++;__cov_139a6ad83d4b5.s['13']++;local=((__cov_139a6ad83d4b5.b['6'][0]++,local.global.utility2_rollup)||(__cov_139a6ad83d4b5.b['6'][1]++,require('utility2'))).requireExampleJsFromReadme();__cov_139a6ad83d4b5.s['14']++;break;}__cov_139a6ad83d4b5.s['15']++;local.global.local=local;}());__cov_139a6ad83d4b5.s['16']++;(function(){__cov_139a6ad83d4b5.f['4']++;__cov_139a6ad83d4b5.s['17']++;return;}());__cov_139a6ad83d4b5.s['18']++;switch(local.modeJs){case'browser':__cov_139a6ad83d4b5.b['7'][0]++;__cov_139a6ad83d4b5.s['19']++;break;case'node':__cov_139a6ad83d4b5.b['7'][1]++;__cov_139a6ad83d4b5.s['20']++;break;}__cov_139a6ad83d4b5.s['21']++;(function(){__cov_139a6ad83d4b5.f['5']++;__cov_139a6ad83d4b5.s['22']++;return;}());__cov_139a6ad83d4b5.s['23']++;switch(local.modeJs){case'browser':__cov_139a6ad83d4b5.b['8'][0]++;__cov_139a6ad83d4b5.s['24']++;local.nop((__cov_139a6ad83d4b5.b['9'][0]++,local.modeTest)&&(__cov_139a6ad83d4b5.b['9'][1]++,document.querySelector('#testRunButton1'))&&(__cov_139a6ad83d4b5.b['9'][2]++,document.querySelector('#testRunButton1').click()));__cov_139a6ad83d4b5.s['25']++;break;case'node':__cov_139a6ad83d4b5.b['8'][1]++;__cov_139a6ad83d4b5.s['26']++;local.testCase_buildApidoc_default=(__cov_139a6ad83d4b5.b['10'][0]++,local.testCase_buildApidoc_default)||(__cov_139a6ad83d4b5.b['10'][1]++,function(options,onError){__cov_139a6ad83d4b5.f['6']++;__cov_139a6ad83d4b5.s['27']++;options={modulePathList:module.paths};__cov_139a6ad83d4b5.s['28']++;local.buildApidoc(options,onError);});__cov_139a6ad83d4b5.s['29']++;local.testCase_buildApp_default=(__cov_139a6ad83d4b5.b['11'][0]++,local.testCase_buildApp_default)||(__cov_139a6ad83d4b5.b['11'][1]++,function(options,onError){__cov_139a6ad83d4b5.f['7']++;__cov_139a6ad83d4b5.s['30']++;local.testCase_buildReadme_default(options,local.onErrorThrow);__cov_139a6ad83d4b5.s['31']++;local.testCase_buildLib_default(options,local.onErrorThrow);__cov_139a6ad83d4b5.s['32']++;local.testCase_buildTest_default(options,local.onErrorThrow);__cov_139a6ad83d4b5.s['33']++;local.testCase_buildCustomOrg_default(options,local.onErrorThrow);__cov_139a6ad83d4b5.s['34']++;options=[];__cov_139a6ad83d4b5.s['35']++;local.buildApp(options,onError);});__cov_139a6ad83d4b5.s['36']++;local.testCase_buildCustomOrg_default=(__cov_139a6ad83d4b5.b['12'][0]++,local.testCase_buildCustomOrg_default)||(__cov_139a6ad83d4b5.b['12'][1]++,function(options,onError){__cov_139a6ad83d4b5.f['8']++;__cov_139a6ad83d4b5.s['37']++;options={};__cov_139a6ad83d4b5.s['38']++;local.buildCustomOrg(options,onError);});__cov_139a6ad83d4b5.s['39']++;local.testCase_buildLib_default=(__cov_139a6ad83d4b5.b['13'][0]++,local.testCase_buildLib_default)||(__cov_139a6ad83d4b5.b['13'][1]++,function(options,onError){__cov_139a6ad83d4b5.f['9']++;__cov_139a6ad83d4b5.s['40']++;options={};__cov_139a6ad83d4b5.s['41']++;local.buildLib(options,onError);});__cov_139a6ad83d4b5.s['42']++;local.testCase_buildReadme_default=(__cov_139a6ad83d4b5.b['14'][0]++,local.testCase_buildReadme_default)||(__cov_139a6ad83d4b5.b['14'][1]++,function(options,onError){__cov_139a6ad83d4b5.f['10']++;__cov_139a6ad83d4b5.s['43']++;options={};__cov_139a6ad83d4b5.s['44']++;local.buildReadme(options,onError);});__cov_139a6ad83d4b5.s['45']++;local.testCase_buildTest_default=(__cov_139a6ad83d4b5.b['15'][0]++,local.testCase_buildTest_default)||(__cov_139a6ad83d4b5.b['15'][1]++,function(options,onError){__cov_139a6ad83d4b5.f['11']++;__cov_139a6ad83d4b5.s['46']++;options={};__cov_139a6ad83d4b5.s['47']++;local.buildTest(options,onError);});__cov_139a6ad83d4b5.s['48']++;local.testCase_webpage_default=(__cov_139a6ad83d4b5.b['16'][0]++,local.testCase_webpage_default)||(__cov_139a6ad83d4b5.b['16'][1]++,function(options,onError){__cov_139a6ad83d4b5.f['12']++;__cov_139a6ad83d4b5.s['49']++;options={modeCoverageMerge:true,url:local.serverLocalHost+'?modeTest=1'};__cov_139a6ad83d4b5.s['50']++;local.browserTest(options,onError);});__cov_139a6ad83d4b5.s['51']++;local.testRunServer(local);__cov_139a6ad83d4b5.s['52']++;break;}}());
+__cov_3ee0b652b70ff = __cov_3ee0b652b70ff['/home/travis/build/npmtest/node-npmtest-gulp-load-plugins/test.js'];
+__cov_3ee0b652b70ff.s['1']++;(function(){'use strict';__cov_3ee0b652b70ff.f['1']++;__cov_3ee0b652b70ff.s['2']++;var local;__cov_3ee0b652b70ff.s['3']++;(function(){__cov_3ee0b652b70ff.f['2']++;__cov_3ee0b652b70ff.s['4']++;local={};__cov_3ee0b652b70ff.s['5']++;local.modeJs=function(){__cov_3ee0b652b70ff.f['3']++;__cov_3ee0b652b70ff.s['6']++;try{__cov_3ee0b652b70ff.s['7']++;return(__cov_3ee0b652b70ff.b['1'][0]++,typeof navigator.userAgent==='string')&&(__cov_3ee0b652b70ff.b['1'][1]++,typeof document.querySelector('body')==='object')&&(__cov_3ee0b652b70ff.b['1'][2]++,typeof XMLHttpRequest.prototype.open==='function')&&(__cov_3ee0b652b70ff.b['1'][3]++,'browser');}catch(errorCaughtBrowser){__cov_3ee0b652b70ff.s['8']++;return(__cov_3ee0b652b70ff.b['2'][0]++,module.exports)&&(__cov_3ee0b652b70ff.b['2'][1]++,typeof process.versions.node==='string')&&(__cov_3ee0b652b70ff.b['2'][2]++,typeof require('http').createServer==='function')&&(__cov_3ee0b652b70ff.b['2'][3]++,'node');}}();__cov_3ee0b652b70ff.s['9']++;local.global=local.modeJs==='browser'?(__cov_3ee0b652b70ff.b['3'][0]++,window):(__cov_3ee0b652b70ff.b['3'][1]++,global);__cov_3ee0b652b70ff.s['10']++;switch(local.modeJs){case'browser':__cov_3ee0b652b70ff.b['4'][0]++;__cov_3ee0b652b70ff.s['11']++;local=local.global.utility2.objectSetDefault((__cov_3ee0b652b70ff.b['5'][0]++,local.global.utility2_rollup)||(__cov_3ee0b652b70ff.b['5'][1]++,local.global.local),local.global.utility2);__cov_3ee0b652b70ff.s['12']++;break;case'node':__cov_3ee0b652b70ff.b['4'][1]++;__cov_3ee0b652b70ff.s['13']++;local=((__cov_3ee0b652b70ff.b['6'][0]++,local.global.utility2_rollup)||(__cov_3ee0b652b70ff.b['6'][1]++,require('utility2'))).requireExampleJsFromReadme();__cov_3ee0b652b70ff.s['14']++;break;}__cov_3ee0b652b70ff.s['15']++;local.global.local=local;}());__cov_3ee0b652b70ff.s['16']++;(function(){__cov_3ee0b652b70ff.f['4']++;__cov_3ee0b652b70ff.s['17']++;return;}());__cov_3ee0b652b70ff.s['18']++;switch(local.modeJs){case'browser':__cov_3ee0b652b70ff.b['7'][0]++;__cov_3ee0b652b70ff.s['19']++;break;case'node':__cov_3ee0b652b70ff.b['7'][1]++;__cov_3ee0b652b70ff.s['20']++;break;}__cov_3ee0b652b70ff.s['21']++;(function(){__cov_3ee0b652b70ff.f['5']++;__cov_3ee0b652b70ff.s['22']++;return;}());__cov_3ee0b652b70ff.s['23']++;switch(local.modeJs){case'browser':__cov_3ee0b652b70ff.b['8'][0]++;__cov_3ee0b652b70ff.s['24']++;local.testCase_browser_nullCase=(__cov_3ee0b652b70ff.b['9'][0]++,local.testCase_browser_nullCase)||(__cov_3ee0b652b70ff.b['9'][1]++,function(options,onError){__cov_3ee0b652b70ff.f['6']++;__cov_3ee0b652b70ff.s['25']++;onError(null,options);});__cov_3ee0b652b70ff.s['26']++;local.nop((__cov_3ee0b652b70ff.b['10'][0]++,local.modeTest)&&(__cov_3ee0b652b70ff.b['10'][1]++,document.querySelector('#testRunButton1'))&&(__cov_3ee0b652b70ff.b['10'][2]++,document.querySelector('#testRunButton1').click()));__cov_3ee0b652b70ff.s['27']++;break;case'node':__cov_3ee0b652b70ff.b['8'][1]++;__cov_3ee0b652b70ff.s['28']++;local.testCase_buildApidoc_default=(__cov_3ee0b652b70ff.b['11'][0]++,local.testCase_buildApidoc_default)||(__cov_3ee0b652b70ff.b['11'][1]++,function(options,onError){__cov_3ee0b652b70ff.f['7']++;__cov_3ee0b652b70ff.s['29']++;options={modulePathList:module.paths};__cov_3ee0b652b70ff.s['30']++;local.buildApidoc(options,onError);});__cov_3ee0b652b70ff.s['31']++;local.testCase_buildApp_default=(__cov_3ee0b652b70ff.b['12'][0]++,local.testCase_buildApp_default)||(__cov_3ee0b652b70ff.b['12'][1]++,function(options,onError){__cov_3ee0b652b70ff.f['8']++;__cov_3ee0b652b70ff.s['32']++;local.testCase_buildReadme_default(options,local.onErrorThrow);__cov_3ee0b652b70ff.s['33']++;local.testCase_buildLib_default(options,local.onErrorThrow);__cov_3ee0b652b70ff.s['34']++;local.testCase_buildTest_default(options,local.onErrorThrow);__cov_3ee0b652b70ff.s['35']++;local.testCase_buildCustomOrg_default(options,local.onErrorThrow);__cov_3ee0b652b70ff.s['36']++;options=[];__cov_3ee0b652b70ff.s['37']++;local.buildApp(options,onError);});__cov_3ee0b652b70ff.s['38']++;local.testCase_buildCustomOrg_default=(__cov_3ee0b652b70ff.b['13'][0]++,local.testCase_buildCustomOrg_default)||(__cov_3ee0b652b70ff.b['13'][1]++,function(options,onError){__cov_3ee0b652b70ff.f['9']++;__cov_3ee0b652b70ff.s['39']++;options={};__cov_3ee0b652b70ff.s['40']++;local.buildCustomOrg(options,onError);});__cov_3ee0b652b70ff.s['41']++;local.testCase_buildLib_default=(__cov_3ee0b652b70ff.b['14'][0]++,local.testCase_buildLib_default)||(__cov_3ee0b652b70ff.b['14'][1]++,function(options,onError){__cov_3ee0b652b70ff.f['10']++;__cov_3ee0b652b70ff.s['42']++;options={};__cov_3ee0b652b70ff.s['43']++;local.buildLib(options,onError);});__cov_3ee0b652b70ff.s['44']++;local.testCase_buildReadme_default=(__cov_3ee0b652b70ff.b['15'][0]++,local.testCase_buildReadme_default)||(__cov_3ee0b652b70ff.b['15'][1]++,function(options,onError){__cov_3ee0b652b70ff.f['11']++;__cov_3ee0b652b70ff.s['45']++;options={};__cov_3ee0b652b70ff.s['46']++;local.buildReadme(options,onError);});__cov_3ee0b652b70ff.s['47']++;local.testCase_buildTest_default=(__cov_3ee0b652b70ff.b['16'][0]++,local.testCase_buildTest_default)||(__cov_3ee0b652b70ff.b['16'][1]++,function(options,onError){__cov_3ee0b652b70ff.f['12']++;__cov_3ee0b652b70ff.s['48']++;options={};__cov_3ee0b652b70ff.s['49']++;local.buildTest(options,onError);});__cov_3ee0b652b70ff.s['50']++;local.testCase_webpage_default=(__cov_3ee0b652b70ff.b['17'][0]++,local.testCase_webpage_default)||(__cov_3ee0b652b70ff.b['17'][1]++,function(options,onError){__cov_3ee0b652b70ff.f['13']++;__cov_3ee0b652b70ff.s['51']++;options={modeCoverageMerge:true,url:local.serverLocalHost+'?modeTest=1'};__cov_3ee0b652b70ff.s['52']++;local.browserTest(options,onError);});__cov_3ee0b652b70ff.s['53']++;local.testRunServer(local);__cov_3ee0b652b70ff.s['54']++;break;}}());
 /* script-end /assets.test.js */
 
 
