@@ -1,6 +1,6 @@
 # npmtest-gulp-load-plugins
 
-#### test coverage for  [gulp-load-plugins (v1.5.0)](https://github.com/jackfranklin/gulp-load-plugins#readme)  [![npm package](https://img.shields.io/npm/v/npmtest-gulp-load-plugins.svg?style=flat-square)](https://www.npmjs.org/package/npmtest-gulp-load-plugins) [![travis-ci.org build-status](https://api.travis-ci.org/npmtest/node-npmtest-gulp-load-plugins.svg)](https://travis-ci.org/npmtest/node-npmtest-gulp-load-plugins)
+#### basic test coverage for  [gulp-load-plugins (v1.5.0)](https://github.com/jackfranklin/gulp-load-plugins#readme)  [![npm package](https://img.shields.io/npm/v/npmtest-gulp-load-plugins.svg?style=flat-square)](https://www.npmjs.org/package/npmtest-gulp-load-plugins) [![travis-ci.org build-status](https://api.travis-ci.org/npmtest/node-npmtest-gulp-load-plugins.svg)](https://travis-ci.org/npmtest/node-npmtest-gulp-load-plugins)
 
 #### Automatically load any gulp plugins in your package.json
 
@@ -10,7 +10,7 @@
 |--:|:--|
 | coverage : | [![istanbul-coverage](https://npmtest.github.io/node-npmtest-gulp-load-plugins/build/coverage.badge.svg)](https://npmtest.github.io/node-npmtest-gulp-load-plugins/build/coverage.html/index.html)|
 | test-report : | [![test-report](https://npmtest.github.io/node-npmtest-gulp-load-plugins/build/test-report.badge.svg)](https://npmtest.github.io/node-npmtest-gulp-load-plugins/build/test-report.html)|
-| build-artifacts : | [![build-artifacts](https://npmtest.github.io/node-npmtest-gulp-load-plugins/glyphicons_144_folder_open.png)](https://github.com/npmtest/node-npmtest-gulp-load-plugins/tree/gh-pages/build)|
+| test-server-github : | [![github.com test-server](https://npmtest.github.io/node-npmtest-gulp-load-plugins/GitHub-Mark-32px.png)](https://npmtest.github.io/node-npmtest-gulp-load-plugins/build/app/index.html) | | build-artifacts : | [![build-artifacts](https://npmtest.github.io/node-npmtest-gulp-load-plugins/glyphicons_144_folder_open.png)](https://github.com/npmtest/node-npmtest-gulp-load-plugins/tree/gh-pages/build)|
 
 - [https://npmtest.github.io/node-npmtest-gulp-load-plugins/build/coverage.html/index.html](https://npmtest.github.io/node-npmtest-gulp-load-plugins/build/coverage.html/index.html)
 
@@ -144,7 +144,8 @@
         "lint": "eslint **/*.js",
         "test": "npm run lint && NODE_PATH=test/global_modules mocha"
     },
-    "version": "1.5.0"
+    "version": "1.5.0",
+    "bin": {}
 }
 ```
 
